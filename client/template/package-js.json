@@ -1,0 +1,33 @@
+{
+  "name": "",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@cloudbase/node-sdk": "^2.3.2",
+    "ejs": "^3.1.2",
+    "jsonwebtoken": "^8.5.1",
+    "query-string": "^7.1.1",
+    "request-promise": "^4.2.4",
+    "tcf-router": "^0.0.2-beta4",
+    "wx-server-sdk": "^1.8.3"
+  },
+  "webservice": {
+    "path": "/ts"
+  },
+  "envVariables": [
+
+  ],
+  "ignore": false,
+  "isCompressed": true,
+  "layers": [
+    {
+      "name": "Layer Name"
+    }
+  ]
+}

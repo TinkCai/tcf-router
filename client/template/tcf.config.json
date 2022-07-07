@@ -1,0 +1,15 @@
+{
+  "appPath": "./functions",
+  "functionEnvVariables": {
+    "STAGE": "LOCAL"
+  },
+  "context": {
+    "appId": "wx7ce310ee1e4efd39",
+    "uin": "mockuintinkcai831",
+    "envId": "local"
+  },
+  "devServer": {
+    "port": 8081,
+    "https": false
+  }
+}
