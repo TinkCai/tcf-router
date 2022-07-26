@@ -17,7 +17,7 @@ const installInquirer = [
   }
 ];
 
-const languages = [
+const functionInquiry = [
   {
     type: 'input',
     message: 'Please input the function name',
@@ -32,7 +32,7 @@ const languages = [
     name: 'language',
     default: 'typescript',
     choices: ['typescript', 'javascript'],
-    filter: function (val) {
+    filter: function(val) {
       return val.toLowerCase();
     }
   },
@@ -71,15 +71,26 @@ const actionInit = () => {
 
 const actionDev = (configPath, cmd) => {
   const execFilePath = path.join(dir, `server.ts`);
+  if (configPath && !path.isAbsolute(configPath)) {
+    configPath = path.join(CWD, configPath);
+  }
+  const nodeFiles = [
+    path.join(dir, '../node_modules/ts-node/dist/bin.js'),
+    path.join(dir, '../../ts-node/dist/bin.js')
+  ];
+  let nodeFilePath = '';
+  for (const file of nodeFiles) {
+    if (fs.existsSync(file)) {
+      nodeFilePath = file;
+      break;
+    }
+  }
   const subProcess = exec(
-    `node "${path.join(
-      dir,
-      '../node_modules/ts-node/dist/bin.js'
-    )}" "${execFilePath}" "${CWD}" "${configPath || CWD}"`,
+    `node "${nodeFilePath}" "${execFilePath}" "${CWD}" "${configPath || CWD}"`,
     {
       maxBuffer: 1024 * 2000
     },
-    function (err, stdout, stderr) {
+    function(err, stdout, stderr) {
       console.log(err, stdout, stderr);
     }
   );
@@ -98,6 +109,7 @@ const createFunctionProcess = (result) => {
   const packageName =
     result.language === 'typescript' ? 'package-ts.json' : 'package-js.json';
   const packageFilePath = path.join(dir, `template/${packageName}`);
+  const tsConfigFilePath = path.join(dir, 'template/tsconfig.json');
   const indexFilePath = path.join(
     dir,
     `template/index.${result.language === 'typescript' ? 'ts' : 'js'}`
@@ -126,6 +138,13 @@ const createFunctionProcess = (result) => {
       `index.${result.language === 'typescript' ? 'ts' : 'js'}`
     )
   );
+  fs.copyFileSync(
+    tsConfigFilePath,
+    path.join(
+      functionDir,
+      'tsconfig.json'
+    )
+  );
   fs.mkdirSync(functionDir + '/routers');
   fs.copyFileSync(
     routerFilePath,
@@ -136,9 +155,9 @@ const createFunctionProcess = (result) => {
   );
 };
 
-const actionCreate = async (cmd) => {
+const actionCreateFunction = async (cmd) => {
   const { default: inquirer } = await import('inquirer');
-  const result = await inquirer.prompt(languages);
+  const result = await inquirer.prompt(functionInquiry);
   createFunctionProcess(result);
   console.log(`function ${result.functionName} has been created`);
 };
@@ -181,7 +200,7 @@ const actionNew = async (projectName, cmd) => {
       {
         maxBuffer: 1024 * 2000
       },
-      function (err, stdout, stderr) {
+      function(err, stdout, stderr) {
         console.log(err, stdout, stderr);
       }
     );
@@ -191,11 +210,46 @@ const actionNew = async (projectName, cmd) => {
   }
 };
 
+const actionDeploy = async (configPath, cmd) => {
+  const execFilePath = path.join(dir, `deploy.ts`);
+  if (configPath && !path.isAbsolute(configPath)) {
+    configPath = path.join(CWD, configPath);
+  }
+  const nodeFiles = [
+    path.join(dir, '../node_modules/ts-node/dist/bin.js'),
+    path.join(dir, '../../ts-node/dist/bin.js')
+  ];
+  let nodeFilePath = '';
+  for (const file of nodeFiles) {
+    if (fs.existsSync(file)) {
+      nodeFilePath = file;
+      break;
+    }
+  }
+
+  const subProcess2 = exec(
+    `node "${nodeFilePath}" "${execFilePath}" "${CWD}" "${configPath || CWD}"`,
+    {
+      maxBuffer: 1024 * 2000
+    },
+    function(err, stdout, stderr) {
+      if (err || stderr) {
+        console.error(err, stderr);
+      } else {
+        console.log(stdout);
+      }
+    }
+  );
+  // subProcess2.stdout.on('data', (data) => {
+  //   console.log(data);
+  // });
+};
+
 program
   .version(pkg.version)
-  .command('create')
+  .command('create function')
   .description('create a cloud function with template')
-  .action(actionCreate);
+  .action(actionCreateFunction);
 
 program
   .command('dev [configPath]')
@@ -211,5 +265,10 @@ program
   .command('new <projectName>')
   .description('new a tcf project')
   .action(actionNew);
+
+program
+  .command('deploy [configPath]')
+  .description('deploy your cloudbase functions')
+  .action(actionDeploy);
 
 program.parse(process.argv);

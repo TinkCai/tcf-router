@@ -1,4 +1,5 @@
-import { TcfApiHandler, TcfApiRequest, Router, Simulator } from '../src';
+import { TcfApiRequest, TcfFunctionApp } from '../src';
+import { Simulator } from '../src/simulator';
 import * as fs from 'fs';
 import * as path from 'path';
 import { EnvConfig } from '../src/simulator';
@@ -6,15 +7,6 @@ import { EnvConfig } from '../src/simulator';
 const args = process.argv.splice(2);
 const defaultConfig = require('./template/tcf.config.json');
 import { pathToRegexp } from 'path-to-regexp';
-
-interface FunctionApp {
-  path: string;
-  name: string;
-  entrance: {
-    main: TcfApiHandler;
-    createApp: (req: TcfApiRequest, context: Record<string, any>) => Router;
-  };
-}
 
 const getConfigFile = async (filePath = ''): Promise<EnvConfig> => {
   if (filePath) {
@@ -72,9 +64,9 @@ const fileLoader = (filePath: string): Promise<any> => {
   });
 };
 
-const getApps = (config: EnvConfig): Promise<FunctionApp[]> => {
+const getApps = (config: EnvConfig): Promise<TcfFunctionApp[]> => {
   return new Promise((resolve, reject) => {
-    const appListPromises = [] as Promise<FunctionApp | boolean>[];
+    const appListPromises = [] as Promise<TcfFunctionApp | boolean>[];
     const folderPath = path.join(args[0], config.appPath);
     readFolder(folderPath)
       .then((items) => {
@@ -85,7 +77,7 @@ const getApps = (config: EnvConfig): Promise<FunctionApp[]> => {
           }
         }
         Promise.all(appListPromises).then((results) => {
-          resolve(results.filter((result) => !!result) as FunctionApp[]);
+          resolve(results.filter((result) => !!result) as TcfFunctionApp[]);
         });
       })
       .catch(reject);
@@ -115,7 +107,7 @@ const formatHttpsOption = (config: EnvConfig) => {
   }
 };
 
-const checkActiveApp = (appPath: string): Promise<FunctionApp | boolean> => {
+const checkActiveApp = (appPath: string): Promise<TcfFunctionApp | boolean> => {
   return readFolder(appPath).then((items: string[]) => {
     if (items.includes('package.json')) {
       const config = require(`${appPath}/package.json`);
@@ -136,7 +128,7 @@ const checkActiveApp = (appPath: string): Promise<FunctionApp | boolean> => {
   });
 };
 
-const findFunctionApp = (functionApps: FunctionApp[], requestPath: string) => {
+const findFunctionApp = (functionApps: TcfFunctionApp[], requestPath: string) => {
   const matchedApp = functionApps.filter((app) => {
     const regex = pathToRegexp(`${app.path}(.*)`);
     const result = regex.exec(requestPath);

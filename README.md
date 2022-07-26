@@ -46,3 +46,14 @@ Now you can see what happened in your browser
 }
 
 ```
+
+## TODO
+- layer management(Create/Version)
+
+## CI/CD integration (WIP)
+- secretID/Key config file management
+- before/after deployment hooks
+- check & deploy
+- gitlab-ci.yml template
+- visibility of functions
+- execution of functions

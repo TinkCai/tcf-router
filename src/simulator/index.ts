@@ -16,6 +16,14 @@ export interface EnvConfig {
   };
 }
 
+export interface DeploymentConfig {
+  appPath: string;
+  envVariables: Record<string, string>;
+  secretId: string;
+  secretKey: string;
+  envId: string;
+}
+
 interface ExpressRequest {
   headers: Record<string, any>;
   method: string;

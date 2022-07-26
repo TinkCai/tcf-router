@@ -1,5 +1,6 @@
 import { Response } from './response';
 import { match } from 'path-to-regexp';
+
 export type TcfApiHandler = (
   req: TcfApiRequest,
   res: TcfApiResponse,
@@ -8,11 +9,11 @@ export type TcfApiHandler = (
 ) => Promise<void>;
 export type AddRoutes = (sr: Router) => {};
 export type ContinueFlag = { result?: any; next: boolean };
-export { Simulator } from './simulator';
 export { default as bodyParser } from './middlewares/body.parser';
 export { default as staticHandler } from './middlewares/static.handler';
 export { default as cookieParser } from './middlewares/cookie.parser';
 export { default as protocolMiddleware } from './middlewares/protocol.middleware';
+export { TcfDeployClient } from './ci/deploy.client';
 
 export interface TcfApiRequest {
   params?: { [name: string]: string | undefined };
@@ -39,7 +40,31 @@ export interface TcfApiResponse extends Response {
   multiValueHeaders?: Record<string, any>;
 }
 
-export interface TcfContext extends Record<string, string> {}
+export interface TcfContext extends Record<string, string> {
+}
+
+export interface TcfFunctionApp {
+  path: string;
+  name: string;
+  entrance: {
+    main: TcfApiHandler;
+    createApp: (req: TcfApiRequest, context: Record<string, any>) => Router;
+  };
+}
+
+export interface TcfFunctionConfig {
+  functionPath: string;
+  path: string;
+  name: string;
+  timeout?: number;
+  runtime?: string;
+  envVariables: string[];
+  isCompressed: boolean;
+  layers: {
+    name: string;
+    version?: number;
+  }[]
+}
 
 export class Router {
   private readonly _handlers: any[];
