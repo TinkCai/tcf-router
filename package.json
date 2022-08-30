@@ -1,9 +1,9 @@
 {
   "name": "tcf-router",
-  "version": "0.0.10",
+  "version": "0.0.18",
   "description": "provide a express-like tencent cloudbase function router and a local simulator",
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./types/index.d.ts",
   "bin": {
     "tcf": "./bin/index.js"
   },
@@ -11,7 +11,7 @@
     "prepublishOnly": "npm run build",
     "test": "jest --coverage",
     "build": "tsc",
-    "dev": "ts-node client/server.ts ./demo",
+    "dev": "ts-node client/server.ts ./demo/ts-project",
     "format": "prettier --config .prettierrc.json --write \"{src,client,test}/**/*.{j,t}s\""
   },
   "repository": {
@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@cloudbase/js-sdk": "^1.7.2",
-    "@cloudbase/manager-node": "^4.0.1",
+    "@cloudbase/manager-node": "^4.1.0",
     "@types/cookie": "^0.5.1",
     "@types/ejs": "^3.1.1",
     "@types/express": "^4.17.13",

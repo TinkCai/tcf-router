@@ -1,16 +1,17 @@
-import { DeploymentConfig, EnvConfig } from '../src/simulator';
-import * as path from 'path';
-import * as fs from 'fs';
-import { TcfFunctionConfig, TcfDeployClient } from '../src';
-import { ICreateFunctionParam } from '@cloudbase/manager-node/types/function';
+const { DeploymentConfig, EnvConfig } = require('../dist/simulator');
+const path = require('path');
+const fs = require('fs');
+const { TcfFunctionConfig } = require('../dist');
+const TcfDeployClient = require('./ci/deploy.client');
 
 const zipper = require('zip-local');
 const rimRaf = require('rimraf');
+const exec = require('child_process').exec;
 
 const defaultConfig = require('./template/tcf.ci.js');
 const args = process.argv.splice(2);
 
-const getConfigFile = async (filePath = ''): Promise<DeploymentConfig> => {
+const getConfigFile = async (filePath = '') => {
   if (filePath) {
     const stat = fs.lstatSync(filePath);
     if (stat.isDirectory()) {
@@ -19,25 +20,25 @@ const getConfigFile = async (filePath = ''): Promise<DeploymentConfig> => {
         const fileAbsolutePath = path.join(filePath, file);
         if (
           fs.lstatSync(file).isFile() &&
-          (file.endsWith('tcf.config.json') || file.endsWith('tcf.config.js'))
+          (file.endsWith('tcf.ci.json') || file.endsWith('tcf.ci.js'))
         ) {
-          return await import(fileAbsolutePath);
+          return require(fileAbsolutePath);
         }
       }
       throw new Error('no config file found');
     } else {
-      return await import(filePath);
+      return require(filePath);
     }
   } else {
     return defaultConfig;
   }
 };
 
-const readFolder = (folderPath: string): Promise<string[]> => {
+const readFolder = (folderPath) => {
   return new Promise((resolve, reject) => {
     fs.readdir(
       folderPath,
-      (err: NodeJS.ErrnoException | null, items: string[]) => {
+      (err, items) => {
         if (err) {
           reject(err);
         } else {
@@ -48,11 +49,13 @@ const readFolder = (folderPath: string): Promise<string[]> => {
   });
 };
 
-const getActiveApp = (appPath: string): Promise<TcfFunctionConfig | boolean> => {
-  return readFolder(appPath).then((items: string[]) => {
+const getActiveApp = (appPath, ciConfig) => {
+  return readFolder(appPath).then((items) => {
     if (items.includes('package.json')) {
       const config = require(`${appPath}/package.json`);
-      if (config.ignore === true) {
+      if (config.ignore === true
+        || (ciConfig.ignoreFuncName && ciConfig.ignoreFuncName.includes(config.name))
+        || (ciConfig.focusFuncName && ciConfig.focusFuncName.length > 0 && !ciConfig.focusFuncName.includes(config.name))) {
         return false;
       } else {
         return {
@@ -62,7 +65,9 @@ const getActiveApp = (appPath: string): Promise<TcfFunctionConfig | boolean> => 
           envVariables: config.envVariables,
           isCompressed: config.isCompressed,
           layers: config.layers,
-          runtime: config.runtime
+          runtime: config.runtime,
+          devDependencies: config.devDependencies,
+          dependencies: config.dependencies
         };
       }
     } else {
@@ -71,42 +76,35 @@ const getActiveApp = (appPath: string): Promise<TcfFunctionConfig | boolean> => 
   });
 };
 
-const getApps = (config: DeploymentConfig): Promise<TcfFunctionConfig[]> => {
+const getApps = (config) => {
   return new Promise((resolve, reject) => {
-    const appListPromises = [] as Promise<TcfFunctionConfig | boolean>[];
+    const appListPromises = [];
     const folderPath = path.join(args[0], config.appPath);
     readFolder(folderPath)
       .then((items) => {
         for (let appName of items) {
           const status = fs.lstatSync(`${folderPath}/${appName}`);
           if (status.isDirectory()) {
-            appListPromises.push(getActiveApp(`${folderPath}/${appName}`));
+            appListPromises.push(getActiveApp(`${folderPath}/${appName}`, config));
           }
         }
         Promise.all(appListPromises).then((results) => {
-          resolve(results.filter((result) => !!result) as TcfFunctionConfig[]);
+          resolve(results.filter((result) => !!result));
         });
       })
       .catch(reject);
   });
 };
 
-const formatLayers = (validLayers: {
-  name: string,
-  version: number,
-  status: string
-}[], layers: {
-  name: string,
-  version?: number
-}[]): { name: string, version: number }[] => {
-  const result = [] as { name: string, version: number }[];
+const formatLayers = (validLayers, layers) => {
+  const result = [];
   for (const layer of layers) {
     if (layer.version) {
       const vl = validLayers.filter((ele) => {
         return (ele.name === layer.name && ele.version === layer.version);
       });
       if (vl.length === 1) {
-        result.push(layer as { name: string, version: number });
+        result.push(layer);
       } else {
         throw new Error(
           `layer ${layer.name}:${layer.version} does not exist`
@@ -126,8 +124,8 @@ const formatLayers = (validLayers: {
   return result;
 };
 
-const getEnvVariables = (set: Record<string, string>, list: string[])=> {
-  const result = {} as Record<string, string>;
+const getEnvVariables = (set, list)=> {
+  const result = {};
   for (const v of list) {
     if (set[v] !== undefined) {
       result[v] = set[v];
@@ -136,7 +134,30 @@ const getEnvVariables = (set: Record<string, string>, list: string[])=> {
   return result;
 };
 
-const deploy = async (config: DeploymentConfig,apps: TcfFunctionConfig[], secretId: string, secretKey: string, envId: string, envVariableSet: Record<string, string | number>) => {
+const executeProcess = async (path, cmd)=> {
+  return new Promise((resolve, reject)=> {
+    const subProcess = exec(
+      `cd "${path}" && ${cmd}`,
+      {
+        maxBuffer: 1024 * 2000
+      },
+      function(err, stdout, stderr) {
+        if (err) {
+          reject(err);
+        } else {
+          if (stderr) {
+            reject(stderr);
+          } else {
+            resolve(stdout);
+          }
+        }
+      }
+    );
+  });
+
+};
+
+const deploy = async (config,apps, secretId, secretKey, envId, envVariableSet) => {
   const client = new TcfDeployClient(secretId, secretKey, envId);
   // layer check
   const { Layers } = await client.listLayers();
@@ -151,6 +172,14 @@ const deploy = async (config: DeploymentConfig,apps: TcfFunctionConfig[], secret
   });
 
   for (const app of apps) {
+    // compile
+    if (typeof app.devDependencies?.typescript === 'string') {
+      const result = await executeProcess(app.functionPath, 'tsc');
+      console.log(result);
+    }
+  }
+
+  for (const app of apps) {
     const config = {
       force: true,
       func: {
@@ -161,7 +190,7 @@ const deploy = async (config: DeploymentConfig,apps: TcfFunctionConfig[], secret
         layers: formatLayers(validLayers, app.layers),
         envVariables: getEnvVariables(defaultConfig.envVariables, app.envVariables)
       }
-    } as ICreateFunctionParam;
+    };
     if (app.isCompressed) {
       rimRaf.sync(`${app.functionPath}/node_modules`);
       const buffer = zipper.sync.zip(app.functionPath).memory();

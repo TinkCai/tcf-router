@@ -1,5 +1,6 @@
 {
   "appPath": "./functions",
+  "layerPath": "./layers",
   "functionEnvVariables": {
     "STAGE": "LOCAL"
   },

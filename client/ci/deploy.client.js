@@ -1,29 +1,17 @@
-import CloudBase from '@cloudbase/manager-node';
-import { CloudBaseGWAPI, EnvInfo } from '@cloudbase/manager-node/types/interfaces';
-import { ICreateFunctionParam } from '@cloudbase/manager-node/src/function/index';
-import { ICloudFunctionTrigger } from '@cloudbase/manager-node/src/interfaces/index';
+const CloudBase = require('@cloudbase/manager-node');
 
 // deploy Functions
-export class TcfDeployClient {
-  private client: CloudBase;
-  private readonly envId: string;
-  private envInfo?: EnvInfo;
-  private deployedFunctions: any;
-  private synchronized?: boolean;
-
-  constructor(secretId: string, secretKey: string, envId: string) {
+class TcfDeployClient {
+  constructor(secretId, secretKey, envId) {
     this.client = new CloudBase({
       secretId, secretKey, envId
     });
     this.envId = envId;
   }
 
-  checkEnvironment(): Promise<boolean> {
-    return this.client.env.listEnvs().then((envInfo: {
-      RequestId: string
-      EnvList: EnvInfo[]
-    }) => {
-      const currentEnv = envInfo.EnvList.filter((envItem: EnvInfo) => {
+  checkEnvironment() {
+    return this.client.env.listEnvs().then((envInfo) => {
+      const currentEnv = envInfo.EnvList.filter((envItem) => {
         return envItem.EnvId === this.envId;
       });
       return currentEnv.length === 1;
@@ -43,7 +31,7 @@ export class TcfDeployClient {
     });
   }
 
-  functionExists(functionName: string) {
+  functionExists(functionName) {
     if (this.synchronized) {
       return this.deployedFunctions.indexOf(functionName) > -1;
     } else {
@@ -51,11 +39,11 @@ export class TcfDeployClient {
     }
   }
 
-  createFunction(funcParam: ICreateFunctionParam) {
+  createFunction(funcParam) {
     return this.client.functions.createFunction(funcParam);
   }
 
-  waitFunctionReady(funcName: string, timer = 3000) {
+  waitFunctionReady(funcName, timer = 3000) {
     return new Promise((resolve) => {
       setTimeout(async () => {
         let functionDetail = await this.client.functions.getFunctionDetail(
@@ -70,7 +58,7 @@ export class TcfDeployClient {
     });
   }
 
-  async invokeFunction(name: string, params: Record<string, any>) {
+  async invokeFunction(name, params) {
     for (let i = 0; i < 5; i++) {
       if (await this.waitFunctionReady(name)) {
         return this.client.functions.invokeFunction(name, params);
@@ -79,7 +67,7 @@ export class TcfDeployClient {
     throw new Error('invoke failed');
   }
 
-  async createFunctionTriggers(functionName: string, triggers: ICloudFunctionTrigger[]) {
+  async createFunctionTriggers(functionName, triggers) {
     for (let i = 0; i < 3; i++) {
       if (await this.waitFunctionReady(functionName, 1)) {
         await this.client.functions.createFunctionTriggers(
@@ -91,12 +79,12 @@ export class TcfDeployClient {
     }
   }
 
-  async checkCollectionExists(name: string) {
+  async checkCollectionExists(name) {
     const result = await this.client.database.checkCollectionExists(name);
     return result.Exists;
   }
 
-  async createCollection(collection: { name: string, ACL: string }) {
+  async createCollection(collection) {
     if (!(await this.checkCollectionExists(collection.name))) {
       await this.client.database.createCollection(collection.name);
       console.log('Collection: ' + collection.name + ' is created.');
@@ -126,9 +114,9 @@ export class TcfDeployClient {
     return result.APISet;
   }
 
-  async createWebService(path: string, cloudFunctionName: string, force = false) {
+  async createWebService(path, cloudFunctionName, force = false) {
     const set = await this.listWebService();
-    const duplicatedGates = set.filter((route: CloudBaseGWAPI) => {
+    const duplicatedGates = set.filter((route) => {
       return route.Path === path && route.Name === cloudFunctionName;
     });
     if (duplicatedGates.length === 0 || force) {
@@ -144,7 +132,7 @@ export class TcfDeployClient {
     }
   }
 
-  async createLayer(name: string, layerFolderPath: string) {
+  async createLayer(name, layerFolderPath) {
     const res = await this.client.functions.createLayer({
       name: name,
       contentPath: layerFolderPath,
@@ -157,7 +145,9 @@ export class TcfDeployClient {
     return this.client.functions.listLayers({});
   }
 
-  listLayerVersions(name: string) {
+  listLayerVersions(name) {
     return this.client.functions.listLayerVersions({ name });
   }
 }
+
+module.exports = TcfDeployClient;

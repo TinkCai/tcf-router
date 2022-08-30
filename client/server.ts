@@ -3,10 +3,10 @@ import { Simulator } from '../src/simulator';
 import * as fs from 'fs';
 import * as path from 'path';
 import { EnvConfig } from '../src/simulator';
+import { pathToRegexp } from 'path-to-regexp';
 
 const args = process.argv.splice(2);
 const defaultConfig = require('./template/tcf.config.json');
-import { pathToRegexp } from 'path-to-regexp';
 
 const getConfigFile = async (filePath = ''): Promise<EnvConfig> => {
   if (filePath) {
@@ -24,7 +24,7 @@ const getConfigFile = async (filePath = ''): Promise<EnvConfig> => {
       }
       throw new Error('no config file found');
     } else {
-      return await import(filePath);
+      return await import(path.join(filePath));
     }
   } else {
     return defaultConfig;
@@ -48,7 +48,7 @@ const readFolder = (folderPath: string): Promise<string[]> => {
 
 const fileLoader = (filePath: string): Promise<any> => {
   return new Promise((resolve, reject) => {
-    import(filePath)
+    import(filePath.replace('.js', ''))
       .then((module) => {
         resolve(module);
       })

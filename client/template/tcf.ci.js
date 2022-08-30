@@ -1,4 +1,4 @@
-const dev2 = {
+const variables = {
 
 };
 
@@ -7,5 +7,5 @@ module.exports = {
   secretId: '',
   secretKey: '',
   envId: '',
-  envVariables: dev2
+  envVariables: variables
 };

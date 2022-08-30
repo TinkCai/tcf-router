@@ -1,6 +1,8 @@
 import { Response } from './response';
 import { match } from 'path-to-regexp';
 
+const fs = require('fs');
+
 export type TcfApiHandler = (
   req: TcfApiRequest,
   res: TcfApiResponse,
@@ -13,7 +15,32 @@ export { default as bodyParser } from './middlewares/body.parser';
 export { default as staticHandler } from './middlewares/static.handler';
 export { default as cookieParser } from './middlewares/cookie.parser';
 export { default as protocolMiddleware } from './middlewares/protocol.middleware';
-export { TcfDeployClient } from './ci/deploy.client';
+
+export class LayerLoader {
+  rootPath: string;
+  layers: string[];
+
+  constructor(layers?: string[], rootPath?: string, ) {
+    this.rootPath = rootPath || process.env.LAYER_PATH || '/opt';
+    this.layers = layers || (process.env.LAYER_NAMES ? process.env.LAYER_NAMES?.split(',') : '') || [];
+  }
+
+  async load(filename: string) {
+    let targetPath = '';
+    this.layers.forEach((layer) => {
+      const pathA = fs.existsSync(`${this.rootPath}/${layer}/${filename}.ts`);
+      const pathB = fs.existsSync(`${this.rootPath}/${layer}/${filename}.js`);
+      if (pathA || pathB) {
+        targetPath = `${this.rootPath}/${layer}/${filename}`;
+      }
+    });
+    if (targetPath) {
+      return await import(targetPath);
+    } else {
+      throw new Error(`module not found: ${filename}`);
+    }
+  }
+}
 
 export interface TcfApiRequest {
   params?: { [name: string]: string | undefined };
@@ -63,7 +90,9 @@ export interface TcfFunctionConfig {
   layers: {
     name: string;
     version?: number;
-  }[]
+  }[],
+  dependencies: { [name: string]: string },
+  devDependencies?: { [name: string]: string }
 }
 
 export class Router {

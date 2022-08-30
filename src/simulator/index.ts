@@ -22,6 +22,8 @@ export interface DeploymentConfig {
   secretId: string;
   secretKey: string;
   envId: string;
+  ignoreFuncName: string[],
+  focusFuncName: string[]
 }
 
 interface ExpressRequest {

@@ -1,24 +1,34 @@
 {
+  "compileOnSave": true,
   "compilerOptions": {
     "allowJs": true,
-    "target": "es6",
+    "target": "ES2017",
+    "types": [
+      "node"
+    ],
     "lib": [
-      "ES6",
-      "dom"
+      "ES6"
     ],
     "outDir": "./dist",
     "rootDir": "./src",
     "importHelpers": true,
     "strict": true,
     "allowSyntheticDefaultImports": true,
-    "declaration": true,
-    "esModuleInterop": true,
     "module": "commonjs",
     "moduleResolution": "node",
-    "sourceMap": true
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "declaration": true,
+    "declarationDir": "./types",
+    "skipLibCheck": true
   },
   "include": [
-    "./src/**/*"
+    "src/**/*"
   ],
-  "exclude": ["/dist/**/*", "node_modules"]
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
 }
