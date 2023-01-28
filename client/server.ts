@@ -47,20 +47,21 @@ const readFolder = (folderPath: string): Promise<string[]> => {
 };
 
 const fileLoader = (filePath: string): Promise<any> => {
+  const tsFilePath = filePath.replace('.js', '.ts');
+  let cwd = '';
+  if (!path.isAbsolute(filePath)) {
+    cwd = process.cwd();
+  }
   return new Promise((resolve, reject) => {
-    import(filePath.replace('.js', ''))
-      .then((module) => {
-        resolve(module);
-      })
-      .catch((e: Error) => {
-        import(filePath.replace('.js', '.ts'))
-          .then((module) => {
-            resolve(module);
-          })
-          .catch((e2: Error) => {
-            reject(new Error(e.message + e2.message));
-          });
+    if (fs.existsSync(tsFilePath)) {
+      import(path.join(cwd, tsFilePath)).then(resolve).catch((e)=> {
+        reject(e);
       });
+    } else {
+      import(path.join(cwd, filePath)).then(resolve).catch((e)=> {
+        reject(e);
+      });
+    }
   });
 };
 
@@ -110,7 +111,8 @@ const formatHttpsOption = (config: EnvConfig) => {
 const checkActiveApp = (appPath: string): Promise<TcfFunctionApp | boolean> => {
   return readFolder(appPath).then((items: string[]) => {
     if (items.includes('package.json')) {
-      const config = require(`${appPath}/package.json`);
+      const fileContent = fs.readFileSync(`${appPath}/package.json`, 'utf-8');
+      const config = JSON.parse(fileContent);
       if (config.ignore === true) {
         return false;
       } else {

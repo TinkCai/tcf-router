@@ -10,6 +10,12 @@ export { default as bodyParser } from './middlewares/body.parser';
 export { default as staticHandler } from './middlewares/static.handler';
 export { default as cookieParser } from './middlewares/cookie.parser';
 export { default as protocolMiddleware } from './middlewares/protocol.middleware';
+export declare class LayerLoader {
+    rootPath: string;
+    layers: string[];
+    constructor(layers?: string[], rootPath?: string);
+    load(filename: string): Promise<any>;
+}
 export interface TcfApiRequest {
     params?: {
         [name: string]: string | undefined;
