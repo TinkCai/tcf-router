@@ -186,9 +186,9 @@ const deploy = async (config,apps, secretId, secretKey, envId, envVariableSet) =
         name: app.name,
         timeout: app.timeout || 60,
         installDependency: true,
-        runtime: app.runtime || 'Nodejs10.15',
+        runtime: app.runtime || 'Nodejs16.13',
         layers: formatLayers(validLayers, app.layers),
-        envVariables: getEnvVariables(defaultConfig.envVariables, app.envVariables)
+        envVariables: getEnvVariables(envVariableSet || defaultConfig.envVariables, app.envVariables)
       }
     };
     if (app.isCompressed) {
