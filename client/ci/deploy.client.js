@@ -136,7 +136,7 @@ class TcfDeployClient {
     const res = await this.client.functions.createLayer({
       name: name,
       contentPath: layerFolderPath,
-      runtimes: ['Nodejs8.9', 'Nodejs10.15']
+      runtimes: ['Nodejs8.9', 'Nodejs10.15', 'Nodejs16.13']
     });
     console.log(`deployed layer ${name}:${res.LayerVersion}`);
   }
@@ -147,6 +147,10 @@ class TcfDeployClient {
 
   listLayerVersions(name) {
     return this.client.functions.listLayerVersions({ name });
+  }
+
+  updateFunctionConfig(funcParam) {
+    return this.client.functions.updateFunctionConfig(funcParam);
   }
 }
 

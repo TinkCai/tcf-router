@@ -1,15 +1,14 @@
 /// <reference types="node" />
 import { Response } from './response';
-export declare type TcfApiHandler = (req: TcfApiRequest, res: TcfApiResponse, next: () => void, options?: Record<string, any>) => Promise<void>;
-export declare type AddRoutes = (sr: Router) => {};
-export declare type ContinueFlag = {
+export type TcfApiHandler = (req: TcfApiRequest, res: TcfApiResponse, next: () => void, options?: Record<string, any>) => Promise<void>;
+export type AddRoutes = (sr: Router) => {};
+export type ContinueFlag = {
     result?: any;
     next: boolean;
 };
 export { default as bodyParser } from './middlewares/body.parser';
 export { default as staticHandler } from './middlewares/static.handler';
 export { default as cookieParser } from './middlewares/cookie.parser';
-export { default as protocolMiddleware } from './middlewares/protocol.middleware';
 export declare class LayerLoader {
     rootPath: string;
     layers: string[];

@@ -39,6 +39,6 @@ export declare class Simulator {
     setEnv(env: Record<string, string>): void;
     getDecoratedRequest(req: ExpressRequest, rawBody: string | Record<string, any>): TcfApiRequest;
     constructor(envConfig: EnvConfig);
-    deploy(entrance: (request: TcfApiRequest, context: TcfContext) => Promise<SimpleResponse>, httpsOptions?: ServerOptions): https.Server | http.Server;
+    deploy(entrance: (request: TcfApiRequest, context: TcfContext) => Promise<SimpleResponse>, httpsOptions?: ServerOptions): https.Server<typeof http.IncomingMessage, typeof http.ServerResponse> | http.Server<typeof http.IncomingMessage, typeof http.ServerResponse>;
 }
 export {};

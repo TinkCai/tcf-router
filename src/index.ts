@@ -14,7 +14,6 @@ export type ContinueFlag = { result?: any; next: boolean };
 export { default as bodyParser } from './middlewares/body.parser';
 export { default as staticHandler } from './middlewares/static.handler';
 export { default as cookieParser } from './middlewares/cookie.parser';
-export { default as protocolMiddleware } from './middlewares/protocol.middleware';
 
 export class LayerLoader {
   rootPath: string;
@@ -35,7 +34,7 @@ export class LayerLoader {
       }
     });
     if (targetPath) {
-      return await import(targetPath);
+      return import(targetPath);
     } else {
       throw new Error(`module not found: ${filename}`);
     }

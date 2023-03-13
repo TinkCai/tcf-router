@@ -1,11 +1,12 @@
-const variables = {
-
-};
+const variables = {};
 
 module.exports = {
   appPath: './functions',
   secretId: '',
   secretKey: '',
   envId: '',
-  envVariables: variables
+  envVariables: variables,
+  layers: [
+    { name: '', path: '' }
+  ]
 };

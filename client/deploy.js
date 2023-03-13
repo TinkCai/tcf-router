@@ -67,7 +67,8 @@ const getActiveApp = (appPath, ciConfig) => {
           layers: config.layers,
           runtime: config.runtime,
           devDependencies: config.devDependencies,
-          dependencies: config.dependencies
+          dependencies: config.dependencies,
+          functionConfigOnly: config.functionConfigOnly
         };
       }
     } else {
@@ -124,7 +125,7 @@ const formatLayers = (validLayers, layers) => {
   return result;
 };
 
-const getEnvVariables = (set, list)=> {
+const getEnvVariables = (set, list) => {
   const result = {};
   for (const v of list) {
     if (set[v] !== undefined) {
@@ -134,8 +135,8 @@ const getEnvVariables = (set, list)=> {
   return result;
 };
 
-const executeProcess = async (path, cmd)=> {
-  return new Promise((resolve, reject)=> {
+const executeProcess = async (path, cmd) => {
+  return new Promise((resolve, reject) => {
     const subProcess = exec(
       `cd "${path}" && ${cmd}`,
       {
@@ -154,10 +155,9 @@ const executeProcess = async (path, cmd)=> {
       }
     );
   });
-
 };
 
-const deploy = async (config,apps, secretId, secretKey, envId, envVariableSet) => {
+const deploy = async (ciConfig, apps, secretId, secretKey, envId, envVariableSet) => {
   const client = new TcfDeployClient(secretId, secretKey, envId);
   // layer check
   const { Layers } = await client.listLayers();
@@ -191,28 +191,42 @@ const deploy = async (config,apps, secretId, secretKey, envId, envVariableSet) =
         envVariables: getEnvVariables(envVariableSet || defaultConfig.envVariables, app.envVariables)
       }
     };
-    if (app.isCompressed) {
-      rimRaf.sync(`${app.functionPath}/node_modules`);
-      const buffer = zipper.sync.zip(app.functionPath).memory();
-      config.base64Code = buffer.toString('base64');
+    if (app.functionConfigOnly === true) {
+      await client.updateFunctionConfig(config.func);
     } else {
-      config.functionRootPath = app.functionPath;
-    }
-    await client.createFunction(config);
-    console.log(`${app.name} OK at ${new Date().toLocaleString()}`);
-    if (app.path) {
-      await client.createWebService(app.path, app.name);
-      console.log(
-        `deployed to https://${envId}.service.tcloudbase.com${app.path}.`
-      );
+      if (app.isCompressed) {
+        rimRaf.sync(`${app.functionPath}/node_modules`);
+        const buffer = zipper.sync.zip(app.functionPath).memory();
+        config.base64Code = buffer.toString('base64');
+      } else {
+        config.functionRootPath = app.functionPath;
+      }
+      await client.createFunction(config);
+      console.log(`${app.name} OK at ${new Date().toLocaleString()}`);
+      if (app.path) {
+        await client.createWebService(app.path, app.name);
+        console.log(
+          `deployed to https://${envId}.service.tcloudbase.com${app.path}.`
+        );
+      }
     }
   }
 };
 
-getConfigFile(args[1]).then((config) => {
-  getApps(config).then((apps) => {
-    deploy(config, apps, config.secretId, config.secretKey, config.envId, config.envVariables).then(()=> {
-      console.log('done');
-    });
-  });
+const uploadLayers = async (layers, secretId, secretKey, envId) => {
+  const client = new TcfDeployClient(secretId, secretKey, envId);
+  for (const layer of layers) {
+    let layerPath = path.isAbsolute(layer.path) ? layer.path : path.join(args[0], layer.path);
+    await client.createLayer(layer.name, layerPath);
+  }
+};
+
+getConfigFile(args[1]).then(async (config) => {
+  if (config.layers && config.layers.length > 0) {
+    await uploadLayers(config.layers, config.secretId, config.secretKey, config.envId);
+  }
+  if (config.appPath) {
+    const apps = await getApps(config);
+    await deploy(config, apps, config.secretId, config.secretKey, config.envId, config.envVariables);
+  }
 });
