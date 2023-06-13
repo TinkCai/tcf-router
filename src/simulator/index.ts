@@ -3,8 +3,9 @@ import * as https from 'https';
 import { ServerOptions } from 'https';
 import express = require('express');
 import bodyParser = require('body-parser');
-import { TcfApiRequest, TcfApiResponse, TcfContext } from '../index';
+import { TcfApiRequest, TcfContext } from '../index';
 import { SimpleResponse } from '../response';
+import { Server } from "http";
 
 export interface EnvConfig {
   appPath: string;
@@ -123,7 +124,7 @@ export class Simulator {
       context: TcfContext
     ) => Promise<SimpleResponse>,
     httpsOptions?: ServerOptions
-  ) {
+  ): Server {
     this.entrance = entrance;
     const app = express();
     app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
@@ -138,7 +139,7 @@ export class Simulator {
           context: TcfContext
         ) => Promise<SimpleResponse>
       )(
-        this.getDecoratedRequest(req, req.body) as TcfApiRequest,
+        this.getDecoratedRequest(req, req.body),
         {} as TcfContext
       )
         .then(

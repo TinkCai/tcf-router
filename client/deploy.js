@@ -49,17 +49,17 @@ const readFolder = (folderPath) => {
   });
 };
 
-const getActiveApp = (appPath, ciConfig) => {
-  return readFolder(appPath).then((items) => {
+const getActiveApp = (functionPath, ciConfig) => {
+  return readFolder(functionPath).then((items) => {
     if (items.includes('package.json')) {
-      const config = require(`${appPath}/package.json`);
+      const config = require(`${functionPath}/package.json`);
       if (config.ignore === true
         || (ciConfig.ignoreFuncName && ciConfig.ignoreFuncName.includes(config.name))
         || (ciConfig.focusFuncName && ciConfig.focusFuncName.length > 0 && !ciConfig.focusFuncName.includes(config.name))) {
         return false;
       } else {
         return {
-          functionPath: appPath,
+          functionPath: functionPath,
           path: config.webservice?.path,
           name: config.name,
           envVariables: config.envVariables,
@@ -77,27 +77,26 @@ const getActiveApp = (appPath, ciConfig) => {
   });
 };
 
-const getApps = (config) => {
-  return new Promise((resolve, reject) => {
-    const appListPromises = [];
-    const folderPath = path.join(args[0], config.appPath);
-    readFolder(folderPath)
-      .then((items) => {
-        for (let appName of items) {
-          const status = fs.lstatSync(`${folderPath}/${appName}`);
-          if (status.isDirectory()) {
-            appListPromises.push(getActiveApp(`${folderPath}/${appName}`, config));
-          }
-        }
-        Promise.all(appListPromises).then((results) => {
-          resolve(results.filter((result) => !!result));
-        });
-      })
-      .catch(reject);
-  });
+const getApps = async (config) => {
+  if (typeof config.appPath === 'string') {
+    config.appPath = [config.appPath];
+  }
+  const appListPromises = [];
+  for (const appPath of config.appPath) {
+    const folderPath = path.join(args[0], appPath);
+    const items = await readFolder(folderPath);
+    for (let appName of items) {
+      const status = fs.lstatSync(`${folderPath}/${appName}`);
+      if (status.isDirectory()) {
+        appListPromises.push(getActiveApp(`${folderPath}/${appName}`, config));
+      }
+    }
+  }
+  const results = await Promise.all(appListPromises);
+  return results.filter((result) => !!result);
 };
 
-const formatLayers = (validLayers, layers) => {
+const formatLayers = (validLayers, layers = []) => {
   const result = [];
   for (const layer of layers) {
     if (layer.version) {
@@ -125,7 +124,7 @@ const formatLayers = (validLayers, layers) => {
   return result;
 };
 
-const getEnvVariables = (set, list) => {
+const getEnvVariables = (set, list = []) => {
   const result = {};
   for (const v of list) {
     if (set[v] !== undefined) {
@@ -199,7 +198,7 @@ const deploy = async (ciConfig, apps, secretId, secretKey, envId, envVariableSet
         const buffer = zipper.sync.zip(app.functionPath).memory();
         config.base64Code = buffer.toString('base64');
       } else {
-        config.functionRootPath = app.functionPath;
+        config.functionRootPath = path.resolve(app.functionPath, '../');
       }
       await client.createFunction(config);
       console.log(`${app.name} OK at ${new Date().toLocaleString()}`);

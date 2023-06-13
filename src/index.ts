@@ -237,3 +237,5 @@ export class Router {
     }
   }
 }
+
+export { Simulator } from './simulator';
