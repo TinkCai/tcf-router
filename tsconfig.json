@@ -22,7 +22,11 @@
     "esModuleInterop": true,
     "declaration": true,
     "declarationDir": "./types",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["../../*"]
+    }
   },
   "include": [
     "src/**/*"

@@ -1,10 +1,9 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import * as http from 'http';
-import * as https from 'https';
 import { ServerOptions } from 'https';
 import { TcfApiRequest, TcfContext } from '../index';
 import { SimpleResponse } from '../response';
+import { Server } from "http";
 export interface EnvConfig {
     appPath: string;
     functionEnvVariables: Record<string, string>;
@@ -39,6 +38,6 @@ export declare class Simulator {
     setEnv(env: Record<string, string>): void;
     getDecoratedRequest(req: ExpressRequest, rawBody: string | Record<string, any>): TcfApiRequest;
     constructor(envConfig: EnvConfig);
-    deploy(entrance: (request: TcfApiRequest, context: TcfContext) => Promise<SimpleResponse>, httpsOptions?: ServerOptions): https.Server<typeof http.IncomingMessage, typeof http.ServerResponse> | http.Server<typeof http.IncomingMessage, typeof http.ServerResponse>;
+    deploy(entrance: (request: TcfApiRequest, context: TcfContext) => Promise<SimpleResponse>, httpsOptions?: ServerOptions): Server;
 }
 export {};

@@ -108,3 +108,4 @@ export declare class Router {
      */
     serve(): Promise<any>;
 }
+export { Simulator } from './simulator';
