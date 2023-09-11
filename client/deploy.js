@@ -143,9 +143,11 @@ const executeProcess = async (path, cmd) => {
       },
       function(err, stdout, stderr) {
         if (err) {
+          console.error(err);
           reject(err);
         } else {
           if (stderr) {
+            console.error(stderr);
             reject(stderr);
           } else {
             resolve(stdout);
@@ -216,6 +218,13 @@ const uploadLayers = async (layers, secretId, secretKey, envId) => {
   const client = new TcfDeployClient(secretId, secretKey, envId);
   for (const layer of layers) {
     let layerPath = path.isAbsolute(layer.path) ? layer.path : path.join(args[0], layer.path);
+    const items = await readFolder(layerPath);
+    if (items.includes('package.json')) {
+      const config = require(`${layerPath}/package.json`);
+      if (config.devDependencies?.typescript === 'string') {
+        await executeProcess(layerPath, 'tsc');
+      }
+    }
     await client.createLayer(layer.name, layerPath);
   }
 };

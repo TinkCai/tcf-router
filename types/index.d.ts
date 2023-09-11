@@ -83,19 +83,20 @@ export interface TcfFunctionConfig {
         [name: string]: string;
     };
 }
+export type RoutePath = TcfApiHandler | string | string[];
 export declare class Router {
     private readonly _handlers;
     private readonly _request;
     private readonly options;
     _response: Response;
     constructor(request: TcfApiRequest, options?: Record<string, any>);
-    add(paths: TcfApiHandler | string | string[], handler?: TcfApiHandler, method?: string): void;
+    add(paths: RoutePath, handler?: TcfApiHandler, method?: string): void;
     extends(prefix: string | AddRoutes, addRoute?: AddRoutes | string): void;
-    put(paths: string | TcfApiHandler, handler?: TcfApiHandler): void;
-    get(paths: string | TcfApiHandler, handler?: TcfApiHandler): void;
-    post(paths: string | TcfApiHandler, handler?: TcfApiHandler): void;
-    del(paths: string | TcfApiHandler, handler?: TcfApiHandler): void;
-    use(paths: string | TcfApiHandler, handler?: TcfApiHandler): void;
+    put(paths: RoutePath, handler?: TcfApiHandler): void;
+    get(paths: RoutePath, handler?: TcfApiHandler): void;
+    post(paths: RoutePath, handler?: TcfApiHandler): void;
+    del(paths: RoutePath, handler?: TcfApiHandler): void;
+    use(paths: RoutePath, handler?: TcfApiHandler): void;
     executeHandler(handler: {
         func: TcfApiHandler;
         params: Record<string, string>;

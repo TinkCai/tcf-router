@@ -94,6 +94,8 @@ export interface TcfFunctionConfig {
   devDependencies?: { [name: string]: string }
 }
 
+export type RoutePath = TcfApiHandler | string | string[];
+
 export class Router {
   private readonly _handlers: any[];
   private readonly _request: TcfApiRequest;
@@ -108,7 +110,7 @@ export class Router {
   }
 
   add(
-    paths: TcfApiHandler | string | string[],
+    paths: RoutePath,
     handler?: TcfApiHandler,
     method?: string
   ) {
@@ -121,7 +123,6 @@ export class Router {
         return;
       } else {
         paths = [''];
-        fixedPaths = [pathPrefix || ''];
       }
     }
     if (method === 'ALL' || method === this._request.httpMethod) {
@@ -159,23 +160,23 @@ export class Router {
     }
   }
 
-  put(paths: string | TcfApiHandler, handler?: TcfApiHandler) {
+  put(paths: RoutePath, handler?: TcfApiHandler) {
     this.add(paths, handler, 'PUT');
   }
 
-  get(paths: string | TcfApiHandler, handler?: TcfApiHandler) {
+  get(paths: RoutePath, handler?: TcfApiHandler) {
     this.add(paths, handler, 'GET');
   }
 
-  post(paths: string | TcfApiHandler, handler?: TcfApiHandler) {
+  post(paths: RoutePath, handler?: TcfApiHandler) {
     this.add(paths, handler, 'POST');
   }
 
-  del(paths: string | TcfApiHandler, handler?: TcfApiHandler) {
+  del(paths: RoutePath, handler?: TcfApiHandler) {
     this.add(paths, handler, 'DELETE');
   }
 
-  use(paths: string | TcfApiHandler, handler?: TcfApiHandler) {
+  use(paths: RoutePath, handler?: TcfApiHandler) {
     this.add(paths, handler, 'ALL');
   }
 
