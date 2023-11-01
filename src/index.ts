@@ -240,3 +240,139 @@ export class Router {
 }
 
 export { Simulator } from './simulator';
+
+export class MpFunctionResponse {
+  public result: any;
+  private finalEvent: (res: MpFunctionResponse) => void;
+  _end: boolean;
+
+  constructor() {
+    this.finalEvent = () => {
+    };
+    this._end = false;
+  }
+
+  finally(callback: (res: MpFunctionResponse) => void) {
+    this.finalEvent = callback;
+  }
+
+  end(value: any) {
+    this.result = value;
+    this._end = true;
+    this.finalEvent(this);
+  }
+}
+
+export type MpFunctionHandler = (
+  req: any,
+  res: MpFunctionResponse,
+  next: () => void,
+  options?: Record<string, any>
+) => Promise<void>;
+
+export type MpRoutePath = MpFunctionHandler | string | string[];
+
+export class MpFunctionRouter {
+  private _handlers: any[];
+  private _request: { body: any; path: string, params?: any };
+  private _response: MpFunctionResponse;
+  private context: any;
+
+
+  constructor(event: any, context?: any) {
+    this._handlers = [];
+    this._request = { body: event, path: event.$url };
+    delete event.$url;
+    this._response = new MpFunctionResponse();
+    this.context = context;
+  }
+
+  use(path: MpRoutePath, handler?: MpFunctionHandler) {
+    if (typeof path === 'function') {
+      handler = path;
+      path = '*';
+    }
+
+    this.add(path, handler);
+  }
+
+  add(paths: string | string[], handler?: MpFunctionHandler) {
+    if (typeof paths === 'function') {
+      handler = paths;
+      this._handlers.push({ func: handler });
+      return;
+    }
+    if (!(paths instanceof Array)) {
+      paths = [paths as string];
+    }
+    for (const path of paths) {
+      const regTester = match(path, { decode: decodeURIComponent });
+      const testResult = regTester(this._request.path);
+      if (testResult) {
+        this._handlers.push({
+          func: handler,
+          params: testResult.params,
+          path
+        });
+      }
+    }
+  }
+
+  executeHandler(
+    handler: {
+      func: MpFunctionHandler;
+      params: Record<string, string>;
+    },
+    flags: ContinueFlag
+  ): Promise<{ continue: boolean; result?: any }> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        this._response.finally(() => {
+          if (flags.next) {
+            console.error('the next() was executed, so there is no result');
+          } else {
+            flags.result = true;
+            resolve({
+              continue: false,
+              result: this._response.result
+            });
+          }
+        });
+        this._request.params = handler.params;
+        await handler.func(
+          this._request,
+          this._response,
+          () => {
+            if (flags.result) {
+              console.error('the response has been responded');
+            } else {
+              flags.next = true;
+              resolve({
+                continue: true
+              });
+            }
+          },
+          this.context
+        );
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  /**
+   * start the route server
+   */
+  async serve() {
+    for (const handler of this._handlers) {
+      const flags = {
+        next: false,
+        result: false
+      };
+      const out = await this.executeHandler(handler, flags);
+      if (!out.continue) {
+        return out.result;
+      }
+    }
+  }
+}

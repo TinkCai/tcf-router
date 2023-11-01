@@ -110,3 +110,33 @@ export declare class Router {
     serve(): Promise<any>;
 }
 export { Simulator } from './simulator';
+export declare class MpFunctionResponse {
+    result: any;
+    private finalEvent;
+    _end: boolean;
+    constructor();
+    finally(callback: (res: MpFunctionResponse) => void): void;
+    end(value: any): void;
+}
+export type MpFunctionHandler = (req: any, res: MpFunctionResponse, next: () => void, options?: Record<string, any>) => Promise<void>;
+export type MpRoutePath = MpFunctionHandler | string | string[];
+export declare class MpFunctionRouter {
+    private _handlers;
+    private _request;
+    private _response;
+    private context;
+    constructor(event: any, context?: any);
+    use(path: MpRoutePath, handler?: MpFunctionHandler): void;
+    add(paths: string | string[], handler?: MpFunctionHandler): void;
+    executeHandler(handler: {
+        func: MpFunctionHandler;
+        params: Record<string, string>;
+    }, flags: ContinueFlag): Promise<{
+        continue: boolean;
+        result?: any;
+    }>;
+    /**
+     * start the route server
+     */
+    serve(): Promise<any>;
+}
