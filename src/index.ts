@@ -290,7 +290,7 @@ export class MpFunctionRouter {
   use(path: MpRoutePath, handler?: MpFunctionHandler) {
     if (typeof path === 'function') {
       handler = path;
-      path = '*';
+      path = '';
     }
 
     this.add(path, handler);
