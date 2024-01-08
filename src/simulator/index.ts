@@ -95,10 +95,18 @@ export class Simulator {
       uin: this.envConfig.context?.uin
     };
     request.queryStringParameters = queryObject.parameters;
-    if (typeof rawBody === 'object') {
-      request.body = JSON.stringify(rawBody);
+    if (request.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
+      let list = [];
+      for (const key in rawBody as Record<string, string>) {
+        list.push(`${key}=${(rawBody as Record<string, string>)[key]}`);
+      }
+      request.body = list.join('&');
     } else {
-      request.body = rawBody;
+      if (typeof rawBody === 'object') {
+        request.body = JSON.stringify(rawBody);
+      } else {
+        request.body = rawBody;
+      }
     }
     if (req.headers) {
       req.headers[`x-forwarded-proto`] = req.headers[`x-client-proto`] = this

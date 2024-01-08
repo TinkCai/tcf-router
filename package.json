@@ -1,6 +1,6 @@
 {
   "name": "tcf-router",
-  "version": "0.0.31",
+  "version": "0.0.33",
   "description": "provide a express-like tencent cloudbase function router and a local simulator",
   "main": "./dist/index.js",
   "types": "./types/index.d.ts",
