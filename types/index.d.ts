@@ -82,6 +82,11 @@ export interface TcfFunctionConfig {
     devDependencies?: {
         [name: string]: string;
     };
+    triggers?: {
+        name: string;
+        type: string;
+        config: string;
+    }[];
 }
 export type RoutePath = TcfApiHandler | string | string[];
 export declare class Router {

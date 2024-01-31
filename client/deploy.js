@@ -69,6 +69,7 @@ const getActiveApp = (functionPath, ciConfig) => {
           devDependencies: config.devDependencies,
           dependencies: config.dependencies,
           functionConfigOnly: config.functionConfigOnly
+          triggers: config.triggers || []
         };
       }
     } else {
@@ -190,6 +191,7 @@ const deploy = async (ciConfig, apps, secretId, secretKey, envId, envVariableSet
         runtime: app.runtime || 'Nodejs16.13',
         layers: formatLayers(validLayers, app.layers),
         envVariables: getEnvVariables(envVariableSet || defaultConfig.envVariables, app.envVariables)
+        triggers: app.triggers
       }
     };
     if (app.functionConfigOnly === true) {
