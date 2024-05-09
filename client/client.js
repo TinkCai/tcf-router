@@ -1,4 +1,4 @@
-const program = require('commander');
+const { program } = require('commander');
 const exec = require('child_process').exec;
 const fs = require('fs');
 const path = require('path');
