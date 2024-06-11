@@ -297,6 +297,7 @@ const actionDeploy = async (configPath, cmd) => {
     function(err, stdout, stderr) {
       if (err || stderr) {
         console.error(err, stderr);
+        throw new Error(err);
       } else {
         // console.log(stdout);
       }
