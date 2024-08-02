@@ -1,5 +1,6 @@
 import { Options, Data } from 'ejs';
 import { TcfApiRequest } from './index';
+export declare const resourceNotFound: (path: string) => SimpleResponse;
 export interface SimpleResponse {
     body: {
         [name: string]: any;

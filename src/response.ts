@@ -88,7 +88,7 @@ const CONTENT_TYPE_MAPPER = {
   '.7z': 'application/x-7z-compressed'
 } as Record<string, string>;
 
-const resourceNotFound = (path: string): SimpleResponse => {
+export const resourceNotFound = (path: string): SimpleResponse => {
   return {
     statusCode: 404,
     headers: {
