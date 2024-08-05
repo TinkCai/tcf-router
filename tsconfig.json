@@ -16,7 +16,7 @@
     "allowSyntheticDefaultImports": true,
     "module": "commonjs",
     "moduleResolution": "node",
-    "sourceMap": true,
+    "sourceMap": false,
     "experimentalDecorators": true,
     "noImplicitAny": true,
     "esModuleInterop": true,
