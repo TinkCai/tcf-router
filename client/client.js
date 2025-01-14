@@ -133,7 +133,7 @@ const actionDev = (configPath, cmd) => {
   });
 };
 
-const createLayerProcess = (result)=> {
+const createLayerProcess = (result) => {
   const config = getConfigFile(result.configFile);
   const layerRootDir = path.join(result.cwd || CWD, config.layerPath || '');
   if (!fs.existsSync(layerRootDir)) {
@@ -295,7 +295,7 @@ const actionDeploy = async (configPath, cmd) => {
       maxBuffer: 1024 * 2000
     },
     function(err, stdout, stderr) {
-      if (err || stderr) {
+      if (err || (stderr && stderr.includes('Error'))) {
         console.error(err, stderr);
         throw new Error(err);
       } else {

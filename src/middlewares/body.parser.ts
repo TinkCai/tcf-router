@@ -62,12 +62,12 @@ const parseQuery = (queryString: string) => {
   const entries = usp.entries();
   const body = {} as Record<string, any>;
   let done = false;
-  let value = '';
+  let value: string[] | undefined;
   while (!done) {
     const next = entries.next();
     done = next.done as boolean;
     if (!done) {
-      value = next.value;
+      value = next.value || [];
       body[value[0]] = value[1];
     }
   }

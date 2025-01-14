@@ -12,3 +12,4 @@ jspm_packages/
 yarn.lock
 demo/
 package-lock.json
+.idea
