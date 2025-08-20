@@ -164,10 +164,14 @@ export class Simulator {
                 .end(response);
             } else if (typeof response === 'object') {
               if (response.statusCode) {
-                response.headers = Object.assign(
-                  response.headers,
-                  response.multiValueHeaders || {}
-                );
+                if (!response.headers && response.multiValueHeaders) {
+                  for (const key in response.multiValueHeaders) {
+                    response.headers = response.headers || {};
+                    if (response.multiValueHeaders[key] && response.multiValueHeaders[key] instanceof Array) {
+                      response.headers[key] = response.multiValueHeaders[key][0] || '';
+                    }
+                  }
+                }
                 if (typeof response.body === 'object') {
                   res
                     .status(response.statusCode)

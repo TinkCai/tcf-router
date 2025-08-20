@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import { Response } from './response';
 export type TcfApiHandler = (req: TcfApiRequest, res: TcfApiResponse, next: () => void, options?: Record<string, any>) => Promise<void>;
 export type AddRoutes = (sr: Router) => {};
@@ -60,7 +59,7 @@ export interface TcfFunctionApp {
     path: string;
     name: string;
     entrance: {
-        main: TcfApiHandler;
+        main: (req: TcfApiRequest, context: Record<string, any>) => any | Promise<any>;
         createApp: (req: TcfApiRequest, context: Record<string, any>) => Router;
     };
 }

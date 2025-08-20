@@ -1,5 +1,3 @@
-/// <reference types="node" />
-/// <reference types="node" />
 import { ServerOptions } from 'https';
 import { TcfApiRequest, TcfContext } from '../index';
 import { SimpleResponse } from '../response';

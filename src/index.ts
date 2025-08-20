@@ -73,7 +73,7 @@ export interface TcfFunctionApp {
   path: string;
   name: string;
   entrance: {
-    main: TcfApiHandler;
+    main: (req: TcfApiRequest, context: Record<string, any>) => any | Promise<any>;
     createApp: (req: TcfApiRequest, context: Record<string, any>) => Router;
   };
 }
