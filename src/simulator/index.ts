@@ -167,7 +167,9 @@ export class Simulator {
                 if (!response.headers && response.multiValueHeaders) {
                   for (const key in response.multiValueHeaders) {
                     response.headers = response.headers || {};
-                    if (response.multiValueHeaders[key] && response.multiValueHeaders[key] instanceof Array) {
+                    if (response.multiValueHeaders[key].length > 1) {
+                      response.headers[key] = response.multiValueHeaders[key];
+                    } else {
                       response.headers[key] = response.multiValueHeaders[key][0] || '';
                     }
                   }

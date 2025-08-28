@@ -174,8 +174,12 @@ getConfigFile(args[1]).then((config) => {
             newPath = '/' + newPath;
           }
           newRequest.path = newPath;
-          const newApp = app.entrance.createApp(newRequest, context);
-          return newApp.serve();
+          if (typeof app.entrance.main === 'function') {
+            return app.entrance.main(newRequest, context);
+          } else {
+            const newApp = app.entrance.createApp(newRequest, context);
+            return newApp.serve();
+          }
         } else {
           return {
             statusCode: 404,
