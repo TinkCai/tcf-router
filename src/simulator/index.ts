@@ -5,7 +5,7 @@ import express = require('express');
 import bodyParser = require('body-parser');
 import { TcfApiRequest, TcfContext } from '../index';
 import { SimpleResponse } from '../response';
-import { Server } from "http";
+import { Server } from 'http';
 
 export interface EnvConfig {
   appPath: string;
@@ -164,15 +164,17 @@ export class Simulator {
                 .end(response);
             } else if (typeof response === 'object') {
               if (response.statusCode) {
-                if (!response.headers && response.multiValueHeaders) {
+                const tempHeaders: Record<string, any> = {};
+                if (response.multiValueHeaders) {
                   for (const key in response.multiValueHeaders) {
-                    response.headers = response.headers || {};
                     if (response.multiValueHeaders[key].length > 1) {
-                      response.headers[key] = response.multiValueHeaders[key];
+                      tempHeaders[key] = response.multiValueHeaders[key];
                     } else {
-                      response.headers[key] = response.multiValueHeaders[key][0] || '';
+                      tempHeaders[key] = response.multiValueHeaders[key][0] || '';
                     }
                   }
+                  response.headers = response.headers || {};
+                  response.headers = Object.assign(response.headers, tempHeaders);
                 }
                 if (typeof response.body === 'object') {
                   res

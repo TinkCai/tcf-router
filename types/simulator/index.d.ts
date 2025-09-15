@@ -1,7 +1,7 @@
 import { ServerOptions } from 'https';
 import { TcfApiRequest, TcfContext } from '../index';
 import { SimpleResponse } from '../response';
-import { Server } from "http";
+import { Server } from 'http';
 export interface EnvConfig {
     appPath: string;
     functionEnvVariables: Record<string, string>;
