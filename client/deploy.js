@@ -189,6 +189,7 @@ const deploy = async (ciConfig, apps, secretId, secretKey, envId, envVariableSet
         timeout: app.timeout || 60,
         installDependency: true,
         runtime: app.runtime || 'Nodejs16.13',
+        Layers: formatLayers(validLayers, app.layers),
         layers: formatLayers(validLayers, app.layers),
         envVariables: getEnvVariables(envVariableSet || defaultConfig.envVariables, app.envVariables),
         triggers: app.triggers

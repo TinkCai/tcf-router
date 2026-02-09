@@ -1,9 +1,8 @@
 import { TcfApiHandler, TcfApiRequest, TcfApiResponse } from '../index';
+import * as cookie from 'cookie';
+import * as signature from 'cookie-signature';
 
 const SECRET = process.env.ENCRYPTSECRET || 'scf-stack';
-import * as jwt from 'jsonwebtoken';
-import * as cookie from 'cookie';
-import { JwtPayload } from 'jsonwebtoken';
 
 const cookieParser: TcfApiHandler = async (
   req: TcfApiRequest,
@@ -55,15 +54,11 @@ function convertCookieToJson(obj: Record<string, any>) {
 function unSignCookies(cookiesFromHeader: string) {
   return cookie.parse(cookiesFromHeader, {
     decode: (str) => {
-      const decodedStr = decodeURIComponent(str);
-      if (decodedStr.startsWith('s:')) {
-        try {
-          return (jwt.verify(decodedStr.substr(2), SECRET) as JwtPayload).data;
-        } catch (e) {
-          return null;
-        }
+      const unsignedValue = signature.unsign(str, SECRET);
+      if (unsignedValue !== false) {
+        return unsignedValue;
       } else {
-        return decodedStr;
+        return decodeURIComponent(str);
       }
     }
   });

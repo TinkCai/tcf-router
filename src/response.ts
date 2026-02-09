@@ -3,8 +3,8 @@ import * as path from 'path';
 import * as ejs from 'ejs';
 import * as cookie from 'cookie';
 import { Options, Data } from 'ejs';
-import * as jwt from 'jsonwebtoken';
 import { TcfApiRequest, TcfApiResponse } from './index';
+import * as signature from 'cookie-signature';
 
 const SECRET = process.env.ENCRYPTSECRET || 'scf-stack';
 
@@ -135,7 +135,8 @@ export class Response {
     this.headers = {};
     this.options = options;
     this.eventsOnFinish = [];
-    this.finalEvent = () => {};
+    this.finalEvent = () => {
+    };
     this.statusCode = 0;
   }
 
@@ -267,7 +268,7 @@ export class Response {
       statusCode: this.statusCode || 302,
       headers: {
         'content-type': 'text/html',
-        location: url.replace(/([^\u0000-\u00FF])/g, function ($) {
+        location: url.replace(/([^\u0000-\u00FF])/g, function($) {
           return encodeURI($);
         }),
         ...this.headers
@@ -278,42 +279,48 @@ export class Response {
   cookie(
     name: string,
     value: string | number | Record<string, any>,
-    opts = {} as Record<string, any>
+    options?: Record<string, any>
   ) {
-    let maxAge, signedValue;
-    let cookies = [];
-    let val =
-      typeof value === 'object' ? 'j:' + JSON.stringify(value) : String(value);
-    if (opts.maxAge) {
-      maxAge = opts.maxAge - 0;
-      if (isNaN(maxAge)) throw new Error('maxAge should be a Number');
-    }
-    opts.path = opts.path || '/';
-    opts.maxAge = opts.maxAge || 7200;
-    const prevCookie = this.headers['Set-Cookie'] || '';
-    if (opts.signed) {
-      let signOption = opts.maxAge ? { expiresIn: opts.maxAge } : undefined;
-      signedValue = jwt.sign(
-        {
-          data: val
-        },
-        SECRET,
-        signOption
-      );
-      signedValue = 's:' + signedValue;
+    // 处理值的序列化
+    let serializedValue;
+    if (typeof value === 'object') {
+      serializedValue = 'j:' + JSON.stringify(value);
     } else {
-      signedValue = val;
+      serializedValue = String(value);
     }
-    if (prevCookie) {
-      if (prevCookie instanceof Array) {
-        cookies = prevCookie;
-      } else {
-        cookies.push(prevCookie);
+
+    // 默认选项
+    const opts = { ...options };
+
+    // 处理 maxAge 参数验证
+    if (opts.maxAge != null) {
+      const maxAge = parseInt(opts.maxAge, 10);
+      if (isNaN(maxAge)) {
+        throw new Error('maxAge should be a Number');
       }
+      opts.maxAge = maxAge;
     }
-    const latestCookie = cookie.serialize(name, String(signedValue), opts);
-    cookies.push(latestCookie);
-    this.headers['Set-Cookie'] = cookies;
+
+    // 设置默认路径
+    opts.path = opts.path ?? '/';
+
+    // 处理已存在的 cookies
+    const existingCookies = this.headers['Set-Cookie'] || [];
+    const cookiesArray = Array.isArray(existingCookies)
+      ? existingCookies
+      : existingCookies ? [existingCookies] : [];
+
+    let finalValue = serializedValue;
+
+    if (opts.signed) {
+      finalValue = signature.sign(serializedValue, SECRET);
+    }
+
+    // 创建并添加新的 cookie
+    const cookieString = cookie.serialize(name, finalValue, opts);
+    cookiesArray.push(cookieString);
+
+    this.headers['Set-Cookie'] = cookiesArray;
     return this;
   }
 
