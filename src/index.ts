@@ -46,6 +46,7 @@ export interface TcfApiRequest {
   _body?: string | Buffer | ArrayBuffer | Uint8Array;
   body?: string | Buffer | ArrayBuffer | Uint8Array | { [name: string]: any };
   cookies?: { [name: string]: any };
+  signedCookies?: { [name: string]: any };
   sd?: { [name: string]: any };
   meta?: { [name: string]: any };
   headers: { [name: string]: string };

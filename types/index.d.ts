@@ -25,6 +25,9 @@ export interface TcfApiRequest {
     cookies?: {
         [name: string]: any;
     };
+    signedCookies?: {
+        [name: string]: any;
+    };
     sd?: {
         [name: string]: any;
     };

@@ -34,7 +34,7 @@ export declare class Response {
     file(filePath: string): void;
     render(view: string, data: Data, options: Options): void;
     redirect(url: string): void;
-    cookie(name: string, value: string | number | Record<string, any>, opts?: Record<string, any>): this;
+    cookie(name: string, value: string | number | Record<string, any>, options?: Record<string, any>): this;
     clearCookie(name: string, options?: Record<string, any>): this;
     error(e: Error | Record<string, any>): void;
     notAuthorized(e: Error | Record<string, any>): void;
