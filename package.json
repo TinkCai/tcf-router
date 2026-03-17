@@ -29,12 +29,13 @@
   "author": "Tink Cai",
   "license": "ISC",
   "devDependencies": {
-    "@cloudbase/types": "^2.25.4",
+    "@cloudbase/types": "^2.26.3",
     "@types/express-serve-static-core": "^5.1.1",
-    "@types/node": "^25.2.2"
+    "@types/mime-types": "^3.0.1",
+    "@types/node": "^25.5.0"
   },
   "dependencies": {
-    "@cloudbase/manager-node": "4.10.0",
+    "@cloudbase/manager-node": "4.10.2",
     "@types/cookie": "^1.0.0",
     "@types/cookie-signature": "^1.1.2",
     "@types/ejs": "^3.1.5",
@@ -44,10 +45,11 @@
     "commander": "^14.0.3",
     "cookie": "^1.1.1",
     "cookie-signature": "^1.2.2",
-    "ejs": "^4.0.1",
+    "ejs": "^5.0.1",
     "express": "^5.2.1",
-    "inquirer": "^13.2.2",
+    "inquirer": "^13.3.2",
     "jsonwebtoken": "^9.0.3",
+    "mime-types": "^3.0.2",
     "path-to-regexp": "^6.2.2",
     "prettier": "3.8.1",
     "ts-node": "^10.9.2",

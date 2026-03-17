@@ -3,90 +3,12 @@ import * as path from 'path';
 import * as ejs from 'ejs';
 import * as cookie from 'cookie';
 import { Options, Data } from 'ejs';
-import { TcfApiRequest, TcfApiResponse } from './index';
+import { TcfApiRequest } from './index';
 import * as signature from 'cookie-signature';
+import * as mime from 'mime-types';
+import { CookieOptions } from 'express';
 
-const SECRET = process.env.ENCRYPTSECRET || 'scf-stack';
-
-const CONTENT_TYPE_MAPPER = {
-  '.aac': 'audio/aac',
-  '.abw': 'application/x-abiword',
-  '.arc': 'application/x-freearc',
-  '.avi': 'video/x-msvideo',
-  '.azw': 'application/vnd".amazon".ebook',
-  '.bin': 'application/octet-stream',
-  '.bmp': 'image/bmp',
-  '.bz': 'application/x-bzip',
-  '.bz2': 'application/x-bzip2',
-  '.csh': 'application/x-csh',
-  '.css': 'text/css',
-  '.csv': 'text/csv',
-  '.doc': 'application/msword',
-  '.docx':
-    'application/vnd".openxmlformats-officedocument".wordprocessingml".document',
-  '.eot': 'application/vnd".ms-fontobject',
-  '.epub': 'application/epub+zip',
-  '.gz': 'application/gzip',
-  '.gif': 'image/gif',
-  '.htm': 'text/html',
-  '.html': 'text/html',
-  '.ico': 'image/vnd".microsoft".icon',
-  '.ics': 'text/calendar',
-  '.jar': 'application/java-archive',
-  '.jpeg': 'image/jpeg',
-  '.jpg': 'image/jpeg',
-  '.js': 'text/javascript',
-  '.json': 'application/json',
-  '.jsonld': 'application/ld+json',
-  '.mid': 'audio/midi audio/x-midi',
-  '.midi': 'audio/midi audio/x-midi',
-  '.mjs': 'text/javascript',
-  '.mp3': 'audio/mpeg',
-  '.mpeg': 'video/mpeg',
-  '.mpkg': 'application/vnd".apple".installer+xml',
-  '.odp': 'application/vnd".oasis".opendocument".presentation',
-  '.ods': 'application/vnd".oasis".opendocument".spreadsheet',
-  '.odt': 'application/vnd".oasis".opendocument".text',
-  '.oga': 'audio/ogg',
-  '.ogv': 'video/ogg',
-  '.ogx': 'application/ogg',
-  '.opus': 'audio/opus',
-  '.otf': 'font/otf',
-  '.png': 'image/png',
-  '.pdf': 'application/pdf',
-  '.php': 'application/x-httpd-php',
-  '.ppt': 'application/vnd".ms-powerpoint',
-  '.pptx':
-    'application/vnd".openxmlformats-officedocument".presentationml".presentation',
-  '.rar': 'application/vnd".rar',
-  '.rtf': 'application/rtf',
-  '.sh': 'application/x-sh',
-  '.svg': 'image/svg+xml',
-  '.swf': 'application/x-shockwave-flash',
-  '.tar': 'application/x-tar',
-  '.tif': 'image/tiff',
-  '.tiff': 'image/tiff',
-  '.ts': 'video/mp2t',
-  '.ttf': 'font/ttf',
-  '.txt': 'text/plain',
-  '.vsd': 'application/vnd".visio',
-  '.wav': 'audio/wav',
-  '.weba': 'audio/webm',
-  '.webm': 'video/webm',
-  '.webp': 'image/webp',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-  '.xhtml': 'application/xhtml+xml',
-  '.xls': 'application/vnd".ms-excel',
-  '.xlsx':
-    'application/vnd".openxmlformats-officedocument".spreadsheetml".sheet',
-  '.xml': 'application/xml',
-  '.xul': 'application/vnd".mozilla".xul+xml',
-  '.zip': 'application/zip',
-  '.3gp': 'video/3gpp',
-  '.3g2': 'video/3gpp2',
-  '.7z': 'application/x-7z-compressed'
-} as Record<string, string>;
+const DEFAULT_SECRET = process.env.ENCRYPTSECRET || 'scf-stack';
 
 export const resourceNotFound = (path: string): SimpleResponse => {
   return {
@@ -159,50 +81,52 @@ export class Response {
   }
 
   end(value: string | Record<string, any> | any[] | SimpleResponse) {
-    this._end = true;
-    const onFinishEventResults = [];
-    for (const event of this.eventsOnFinish) {
-      onFinishEventResults.push(event(this));
+    if (this._end) {
+      console.warn('Response has already been sent');
+      return;
     }
+
+    this._end = true;
+    const onFinishEventResults = this.eventsOnFinish.map(event => event(this));
+
     Promise.all(onFinishEventResults).then(() => {
-      if (typeof value === 'object' && (value as SimpleResponse).statusCode) {
-        (value as SimpleResponse).headers = Object.assign(
-          (value as TcfApiResponse).headers,
-          this.headers
-        );
-      } else {
-        value = {
-          statusCode: this.statusCode || 200,
-          headers: {
-            'content-type': 'application/json',
-            ...this.headers
-          },
-          body: value
-        };
-      }
-      if ((value as TcfApiResponse).headers) {
-        for (let key in (value as TcfApiResponse).headers) {
-          if (
-            (
-              (value as TcfApiResponse).headers as Record<
-                string,
-                string | string[]
-              >
-            )[key] instanceof Array
-          ) {
-            if (!(value as TcfApiResponse).multiValueHeaders) {
-              (value as TcfApiResponse).multiValueHeaders = {};
+      const formattedResponse = this.formatResponse(value);
+      if (formattedResponse.headers) {
+        for (let key in formattedResponse.headers) {
+          if (formattedResponse.headers[key] instanceof Array) {
+            if (!formattedResponse.multiValueHeaders) {
+              formattedResponse.multiValueHeaders = {};
             }
-            (
-              (value as TcfApiResponse).multiValueHeaders as Record<string, any>
-            )[key] = (value as TcfApiResponse).headers[key];
-            delete (value as TcfApiResponse).headers[key];
+            formattedResponse.multiValueHeaders[key] = formattedResponse.headers[key];
+            delete formattedResponse.headers[key];
           }
         }
       }
-      this.result = value as SimpleResponse;
+      this.result = formattedResponse;
       this.finalEvent(this);
     });
+  }
+
+  private formatResponse(value: string | Record<string, any> | any[] | SimpleResponse): SimpleResponse {
+    if (this.isSimpleResponse(value)) {
+      return {
+        ...value,
+        headers: Object.assign({}, value.headers ?? {}, this.headers)
+      };
+    }
+
+    return {
+      statusCode: this.statusCode || 200,
+      headers: {
+        'content-type': 'application/json',
+        ...this.headers
+      },
+      body: value
+    };
+  }
+
+  private isSimpleResponse(value: any): value is SimpleResponse {
+    return typeof value === 'object' && value !== null && 'statusCode' in value;
   }
 
   json(value: Record<string, any> | any[]) {
@@ -210,67 +134,82 @@ export class Response {
     return this;
   }
 
-  file(filePath: string) {
-    if (fs.existsSync(filePath)) {
-      let contentType;
-      const filename = path.basename(filePath);
-      if (filePath.indexOf('.') === -1) {
-        contentType = 'text/plain';
-      } else {
-        const names = filename.split('.');
-        const extension = names[names.length - 1];
-        contentType = CONTENT_TYPE_MAPPER[`.${extension}`];
-      }
+  file(filePath: string): void {
+    if (!fs.existsSync(filePath)) {
+      this.end(resourceNotFound(filePath));
+      return;
+    }
+
+    try {
+      const contentType = mime.lookup(filePath) || 'text/plain';
       const body = fs.readFileSync(filePath).toString('base64');
-      const response = {
+
+      const response: SimpleResponse = {
         isBase64Encoded: true,
         statusCode: 200,
         headers: {
           'content-type': contentType
         },
         body
-      } as SimpleResponse;
+      };
+
       this.end(response);
-    } else {
+    } catch (error) {
       this.end(resourceNotFound(filePath));
     }
   }
 
-  render(view: string, data: Data, options: Options) {
-    if (this.options?.templateFolder) {
-      const filePath = path.join(this.options.templateFolder, view + '.ejs');
-      if (fs.existsSync(filePath)) {
-        const tempResponse = {
-          statusCode: this.statusCode || 200,
-          headers: {
-            'content-type': 'text/html'
-          }
-        };
-        if (this.options.defaultTemplateData) {
-          data = Object.assign(this.options.defaultTemplateData, data);
-        }
-        const headers = Object.assign(tempResponse.headers, this.headers);
-        let template = fs.readFileSync(filePath, 'utf-8');
-        options = options || { views: [this.options.templateFolder] };
-        const body = ejs.render(template, data, options);
-        const response = { ...tempResponse, headers, body };
-        this.end(response);
-      } else {
-        this.end(resourceNotFound(view));
-      }
-    } else {
+  render(view: string, data: Data = {}, options: Options = {}): void {
+    const templateFolder = this.options?.templateFolder;
+
+    if (!templateFolder) {
       this.end(resourceNotFound(view));
+      return;
+    }
+
+    const filePath = path.join(templateFolder, `${view}.ejs`);
+
+    if (!fs.existsSync(filePath)) {
+      this.end(resourceNotFound(view));
+      return;
+    }
+
+    try {
+      const mergedData = this.options?.defaultTemplateData
+        ? { ...this.options.defaultTemplateData, ...data }
+        : data;
+
+      const template = fs.readFileSync(filePath, 'utf-8');
+      const renderOptions: Options = {
+        views: [templateFolder],
+        ...options
+      };
+
+      const body = ejs.render(template, mergedData, renderOptions);
+
+      const response: SimpleResponse = {
+        statusCode: this.statusCode || 200,
+        headers: {
+          'content-type': 'text/html',
+          ...this.headers
+        },
+        body
+      };
+
+      this.end(response);
+    } catch (error) {
+      this.error(error instanceof Error ? error : new Error('Template rendering failed'));
     }
   }
 
   redirect(url: string) {
+    const encodedUrl = url.replace(/([^\u0000-\u00FF])/g, (match) => encodeURI(match));
+
     this.end({
       statusCode: this.statusCode || 302,
       headers: {
         'content-type': 'text/html',
-        location: url.replace(/([^\u0000-\u00FF])/g, function($) {
-          return encodeURI($);
-        }),
+        location: encodedUrl,
         ...this.headers
       }
     });
@@ -279,97 +218,127 @@ export class Response {
   cookie(
     name: string,
     value: string | number | Record<string, any>,
-    options?: Record<string, any>
+    options?: CookieOptions
   ) {
-    // 处理值的序列化
-    let serializedValue;
-    if (typeof value === 'object') {
-      serializedValue = 'j:' + JSON.stringify(value);
-    } else {
-      serializedValue = String(value);
-    }
+    const serializedValue = this.serializeCookieValue(value);
+    const opts = this.normalizeCookieOptions(options);
 
-    // 默认选项
+    const existingCookies = this.getExistingCookies();
+
+    const finalValue = opts.signed
+      ? signature.sign(serializedValue, DEFAULT_SECRET)
+      : serializedValue;
+
+    const cookieString = cookie.serialize(name, finalValue, opts);
+    existingCookies.push(cookieString);
+
+    this.headers['Set-Cookie'] = existingCookies;
+    return this;
+  }
+
+  private serializeCookieValue(value: string | number | Record<string, any>): string {
+    if (typeof value === 'object') {
+      return 'j:' + JSON.stringify(value);
+    }
+    return String(value);
+  }
+
+  private normalizeCookieOptions(options?: CookieOptions): CookieOptions {
     const opts = { ...options };
 
-    // 处理 maxAge 参数验证
     if (opts.maxAge != null) {
-      const maxAge = parseInt(opts.maxAge, 10);
+      const maxAge = parseInt(String(opts.maxAge), 10);
       if (isNaN(maxAge)) {
         throw new Error('maxAge should be a Number');
       }
       opts.maxAge = maxAge;
     }
 
-    // 设置默认路径
     opts.path = opts.path ?? '/';
 
-    // 处理已存在的 cookies
-    const existingCookies = this.headers['Set-Cookie'] || [];
-    const cookiesArray = Array.isArray(existingCookies)
-      ? existingCookies
-      : existingCookies ? [existingCookies] : [];
+    return opts;
+  }
 
-    let finalValue = serializedValue;
-
-    if (opts.signed) {
-      finalValue = signature.sign(serializedValue, SECRET);
+  private getExistingCookies(): string[] {
+    const existingCookies = this.headers['Set-Cookie'];
+    if (!existingCookies) {
+      return [];
     }
-
-    // 创建并添加新的 cookie
-    const cookieString = cookie.serialize(name, finalValue, opts);
-    cookiesArray.push(cookieString);
-
-    this.headers['Set-Cookie'] = cookiesArray;
-    return this;
+    return Array.isArray(existingCookies) ? existingCookies : [existingCookies];
   }
 
   clearCookie(name: string, options?: Record<string, any>) {
-    const opts = Object.assign({ expires: new Date(1), path: '/' }, options);
+    const opts: CookieOptions = {
+      ...options,
+      expires: new Date(1),
+      path: '/'
+    };
     return this.cookie(name, '', opts);
   }
 
   error(e: Error | Record<string, any>) {
-    let body,
-      headers,
-      statusCode = this.statusCode || 500;
-    const createResponseBody = () => {
-      if (e instanceof Error) {
-        body = { statusCode: statusCode, message: e.message, stack: e.stack };
-      } else if (typeof e === 'object') {
-        body = { statusCode: statusCode, data: e };
-      } else {
-        body = { statusCode: statusCode, message: e };
-      }
-      headers = {
-        'content-type': 'application/json'
-      };
-    };
-    if (this.req.httpMethod === 'GET') {
-      if (!isJsonRequest(this.req.headers)) {
-        headers = {
-          'content-type': 'text/plain'
-        };
-        if (e instanceof Error) {
-          body = `${e.stack}`;
-        } else if (typeof e === 'object') {
-          body = JSON.stringify(e);
-        } else {
-          body = e;
-        }
-      } else {
-        createResponseBody();
-      }
-    } else {
-      createResponseBody();
-    }
-    this.end({
-      statusCode,
-      headers,
-      body
-    });
+    const statusCode = this.statusCode || 500;
+    const response = this.createErrorResponse(e, statusCode);
+    this.end(response);
   }
 
+  private createErrorResponse(e: Error | Record<string, any>, statusCode: number): SimpleResponse {
+    const isGetRequest = this.req.httpMethod === 'GET';
+    const isJson = isJsonRequest(this.req.headers);
+
+    if (isGetRequest && !isJson) {
+      return this.createPlainTextError(e);
+    }
+
+    return this.createJsonError(e, statusCode);
+  }
+
+  private createPlainTextError(e: Error | Record<string, any>): SimpleResponse {
+    let body: string;
+    if (e instanceof Error) {
+      body = e.stack ?? e.message;
+    } else if (typeof e === 'object') {
+      body = JSON.stringify(e);
+    } else {
+      body = String(e);
+    }
+
+    return {
+      statusCode: this.statusCode || 500,
+      headers: {
+        'content-type': 'text/plain'
+      },
+      body
+    };
+  }
+
+  private createJsonError(e: Error | Record<string, any>, statusCode: number): SimpleResponse {
+    let body: Record<string, any>;
+
+    if (e instanceof Error) {
+      body = {
+        statusCode,
+        message: e.message,
+        stack: e.stack
+      };
+    } else if (typeof e === 'object') {
+      body = { statusCode, data: e };
+    } else {
+      body = { statusCode, message: e };
+    }
+
+    return {
+      statusCode,
+      headers: {
+        'content-type': 'application/json'
+      },
+      body
+    };
+  }
+
+  /**
+   * Send unauthorized response
+   */
   notAuthorized(e: Error | Record<string, any>) {
     this.end({
       statusCode: this.statusCode || 401,
@@ -382,6 +351,9 @@ export class Response {
     });
   }
 
+  /**
+   * Send plain text response
+   */
   text(str: string) {
     this.end({
       statusCode: this.statusCode || 200,
