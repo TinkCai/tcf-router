@@ -17,20 +17,21 @@ enum ContentType {
  */
 const getContentType = (headers: { [name: string]: string }): string => {
   const contentTypeHeader = headers['content-type'];
-  
+
   if (!contentTypeHeader) {
     return ContentType.APPLICATION_JSON;
   }
 
-  const types = typeof contentTypeHeader === 'string'
-    ? contentTypeHeader.split(';')
-    : Array.isArray(contentTypeHeader)
-      ? contentTypeHeader
-      : [];
+  const types =
+    typeof contentTypeHeader === 'string'
+      ? contentTypeHeader.split(';')
+      : Array.isArray(contentTypeHeader)
+        ? contentTypeHeader
+        : [];
 
   for (const type of types) {
     const normalizedType = type.toLowerCase().trim();
-    
+
     switch (normalizedType) {
       case ContentType.MULTIPART_FORM_DATA:
         return ContentType.MULTIPART_FORM_DATA;
@@ -98,7 +99,7 @@ const bodyParser: TcfApiHandler = async (
 
   req._body = req.body as string;
   req.body = parsedBody;
-  
+
   next();
 };
 

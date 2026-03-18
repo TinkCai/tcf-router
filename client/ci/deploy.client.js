@@ -84,7 +84,8 @@ class TcfDeployClient {
   waitFunctionReady(funcName, timer = 3000) {
     return new Promise((resolve) => {
       setTimeout(async () => {
-        const functionDetail = await this.client.functions.getFunctionDetail(funcName);
+        const functionDetail =
+          await this.client.functions.getFunctionDetail(funcName);
         resolve(functionDetail.Status === 'Active');
       }, timer);
     });
@@ -114,7 +115,10 @@ class TcfDeployClient {
   async createFunctionTriggers(functionName, triggers) {
     for (let i = 0; i < 3; i++) {
       if (await this.waitFunctionReady(functionName, 1)) {
-        await this.client.functions.createFunctionTriggers(functionName, triggers);
+        await this.client.functions.createFunctionTriggers(
+          functionName,
+          triggers
+        );
         break;
       }
     }
@@ -142,7 +146,7 @@ class TcfDeployClient {
     } else {
       console.debug('Collection: ' + collection.name + ' is existed.');
     }
-    
+
     await this.client.commonService().call({
       Action: 'ModifyDatabaseACL',
       Param: {
@@ -151,8 +155,10 @@ class TcfDeployClient {
         AclTag: collection.ACL
       }
     });
-    
-    console.log('ACL: ' + collection.ACL + ' for ' + collection.name + ' was created.');
+
+    console.log(
+      'ACL: ' + collection.ACL + ' for ' + collection.name + ' was created.'
+    );
   }
 
   /**
@@ -181,7 +187,7 @@ class TcfDeployClient {
     const duplicatedGates = set.filter((route) => {
       return route.Path === path && route.Name === cloudFunctionName;
     });
-    
+
     if (duplicatedGates.length === 0 || force) {
       await this.client.commonService().call({
         Action: 'CreateCloudBaseGWAPI',

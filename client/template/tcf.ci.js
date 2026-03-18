@@ -6,7 +6,5 @@ module.exports = {
   secretKey: '',
   envId: '',
   envVariables: variables,
-  layers: [
-    { name: '', path: '' }
-  ]
+  layers: [{ name: '', path: '' }]
 };

@@ -23,8 +23,8 @@ export interface DeploymentConfig {
   secretId: string;
   secretKey: string;
   envId: string;
-  ignoreFuncName: string[],
-  focusFuncName: string[]
+  ignoreFuncName: string[];
+  focusFuncName: string[];
 }
 
 interface ExpressRequest {
@@ -85,13 +85,16 @@ export class Simulator {
     req: ExpressRequest,
     rawBody: string | Record<string, any>
   ): TcfApiRequest {
-    const getPathAndParameters = (url: string): { path: string; parameters: Record<string, string> } => {
+    const getPathAndParameters = (
+      url: string
+    ): { path: string; parameters: Record<string, string> } => {
       const queryIndex = url.indexOf('?');
       const pathEndIndex = queryIndex > -1 ? queryIndex : url.length;
 
       return {
         path: url.substring(0, pathEndIndex),
-        parameters: queryIndex === -1 ? {} : parse(url.substring(queryIndex + 1))
+        parameters:
+          queryIndex === -1 ? {} : parse(url.substring(queryIndex + 1))
       };
     };
 
@@ -114,21 +117,26 @@ export class Simulator {
     request.path = queryObject.path;
     request.queryStringParameters = queryObject.parameters;
 
-    if (request.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
+    if (
+      request.headers['content-type']?.includes(
+        'application/x-www-form-urlencoded'
+      )
+    ) {
       const formParams: string[] = [];
       const bodyObj = rawBody as Record<string, string>;
 
       for (const key in bodyObj) {
         if (Object.prototype.hasOwnProperty.call(bodyObj, key)) {
-          formParams.push(`${encodeURIComponent(key)}=${encodeURIComponent(bodyObj[key])}`);
+          formParams.push(
+            `${encodeURIComponent(key)}=${encodeURIComponent(bodyObj[key])}`
+          );
         }
       }
 
       request.body = formParams.join('&');
     } else {
-      request.body = typeof rawBody === 'object'
-        ? JSON.stringify(rawBody)
-        : rawBody;
+      request.body =
+        typeof rawBody === 'object' ? JSON.stringify(rawBody) : rawBody;
     }
 
     if (req.headers) {
@@ -219,15 +227,21 @@ export class Simulator {
         if (typedResponse.multiValueHeaders) {
           typedResponse.headers = typedResponse.headers || {};
 
-          for (const [key, values] of Object.entries(typedResponse.multiValueHeaders)) {
+          for (const [key, values] of Object.entries(
+            typedResponse.multiValueHeaders
+          )) {
             if (Array.isArray(values)) {
-              typedResponse.headers[key] = values.length > 1 ? values : values[0] || '';
+              typedResponse.headers[key] =
+                values.length > 1 ? values : values[0] || '';
             }
           }
         }
 
         let body: any;
-        if (typedResponse.isBase64Encoded && typeof typedResponse.body === 'string') {
+        if (
+          typedResponse.isBase64Encoded &&
+          typeof typedResponse.body === 'string'
+        ) {
           body = Buffer.from(typedResponse.body, 'base64');
         } else if (typeof typedResponse.body === 'object') {
           body = typedResponse.body;

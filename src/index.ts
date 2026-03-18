@@ -27,11 +27,13 @@ export class LayerLoader {
 
   constructor(layers?: string[], rootPath?: string) {
     this.rootPath = rootPath || process.env.LAYER_PATH || '/opt';
-    
+
     if (layers) {
       this.layers = layers;
     } else if (process.env.LAYER_NAMES) {
-      this.layers = process.env.LAYER_NAMES.split(',').filter(name => name.trim() !== '');
+      this.layers = process.env.LAYER_NAMES.split(',').filter(
+        (name) => name.trim() !== ''
+      );
     } else {
       this.layers = [];
     }
@@ -39,16 +41,16 @@ export class LayerLoader {
 
   async load(filename: string): Promise<any> {
     let targetPath = '';
-    
+
     for (const layer of this.layers) {
       const tsPath = `${this.rootPath}/${layer}/${filename}.ts`;
       const jsPath = `${this.rootPath}/${layer}/${filename}.js`;
-      
+
       if (fs.existsSync(tsPath)) {
         targetPath = tsPath;
         break;
       }
-      
+
       if (fs.existsSync(jsPath)) {
         targetPath = jsPath;
         break;
@@ -89,14 +91,16 @@ export interface TcfApiResponse extends Response {
   multiValueHeaders?: Record<string, any>;
 }
 
-export interface TcfContext extends Record<string, any> {
-}
+export interface TcfContext extends Record<string, any> {}
 
 export interface TcfFunctionApp {
   path: string;
   name: string;
   entrance: {
-    main: (req: TcfApiRequest, context: Record<string, any>) => any | Promise<any>;
+    main: (
+      req: TcfApiRequest,
+      context: Record<string, any>
+    ) => any | Promise<any>;
     createApp: (req: TcfApiRequest, context: Record<string, any>) => Router;
   };
 }
@@ -143,11 +147,7 @@ export class Router {
     this._response = new Response(this._request, this.options);
   }
 
-  add(
-    paths: RoutePath,
-    handler?: TcfApiHandler,
-    method?: string
-  ): void {
+  add(paths: RoutePath, handler?: TcfApiHandler, method?: string): void {
     let fixedPaths: string[];
     const pathPrefix = this.options.pathPrefix || '';
 
@@ -194,7 +194,7 @@ export class Router {
 
     if (typeof addRoute === 'function') {
       addRoute(sr);
-      
+
       for (const handler of sr._handlers) {
         this._handlers.push(handler);
       }
@@ -249,21 +249,23 @@ export class Router {
       }
 
       if (handler.func) {
-        handler.func(
-          this._request,
-          this._response,
-          () => {
-            if (flags.result) {
-              console.error('the response has been responded');
-            } else {
-              flags.next = true;
-              resolve({
-                continue: true
-              });
-            }
-          },
-          this.options
-        ).catch(reject);
+        handler
+          .func(
+            this._request,
+            this._response,
+            () => {
+              if (flags.result) {
+                console.error('the response has been responded');
+              } else {
+                flags.next = true;
+                resolve({
+                  continue: true
+                });
+              }
+            },
+            this.options
+          )
+          .catch(reject);
       }
     });
   }
@@ -299,8 +301,7 @@ export class MpFunctionResponse {
   _end: boolean;
 
   constructor() {
-    this.finalEvent = () => {
-    };
+    this.finalEvent = () => {};
     this._end = false;
   }
 
@@ -341,11 +342,11 @@ export class MpFunctionRouter {
 
   constructor(event: any, context?: any) {
     this._handlers = [];
-    this._request = { 
+    this._request = {
       body: { ...event },
-      path: event.$url 
+      path: event.$url
     };
-    
+
     this.context = context;
     this._response = new MpFunctionResponse();
   }
@@ -359,14 +360,18 @@ export class MpFunctionRouter {
     this.add(path as string | string[], handler);
   }
 
-  add(paths: string | string[] | MpFunctionHandler, handler?: MpFunctionHandler): void {
+  add(
+    paths: string | string[] | MpFunctionHandler,
+    handler?: MpFunctionHandler
+  ): void {
     if (typeof paths === 'function') {
       handler = paths;
       this._handlers.push({ func: handler });
       return;
     }
 
-    const pathArray: string[] = paths instanceof Array ? paths : [paths as string];
+    const pathArray: string[] =
+      paths instanceof Array ? paths : [paths as string];
 
     for (const path of pathArray) {
       const matcher = match(path, { decode: decodeURIComponent });
@@ -406,21 +411,23 @@ export class MpFunctionRouter {
       }
 
       if (handler.func) {
-        handler.func(
-          this._request,
-          this._response,
-          () => {
-            if (flags.result) {
-              console.error('the response has been responded');
-            } else {
-              flags.next = true;
-              resolve({
-                continue: true
-              });
-            }
-          },
-          this.context
-        ).catch(reject);
+        handler
+          .func(
+            this._request,
+            this._response,
+            () => {
+              if (flags.result) {
+                console.error('the response has been responded');
+              } else {
+                flags.next = true;
+                resolve({
+                  continue: true
+                });
+              }
+            },
+            this.context
+          )
+          .catch(reject);
       }
     });
   }

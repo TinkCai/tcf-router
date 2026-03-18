@@ -192,9 +192,11 @@ describe('Router', () => {
 
   describe('path parameters', () => {
     it('should extract path parameters', async () => {
-      const handler = jest.fn(async (req: TcfApiRequest, res: TcfApiResponse, _next) => {
-        res.json({ userId: req.params?.id });
-      });
+      const handler = jest.fn(
+        async (req: TcfApiRequest, res: TcfApiResponse, _next) => {
+          res.json({ userId: req.params?.id });
+        }
+      );
 
       mockRequest.path = '/users/123';
       mockRequest.httpMethod = 'GET';
@@ -208,18 +210,23 @@ describe('Router', () => {
     });
 
     it('should handle multiple path parameters', async () => {
-      const handler = jest.fn(async (req: TcfApiRequest, res: TcfApiResponse, _next) => {
-        res.json({
-          category: req.params?.category,
-          productId: req.params?.productId
-        });
-      });
+      const handler = jest.fn(
+        async (req: TcfApiRequest, res: TcfApiResponse, _next) => {
+          res.json({
+            category: req.params?.category,
+            productId: req.params?.productId
+          });
+        }
+      );
 
       mockRequest.path = '/products/electronics/456';
       mockRequest.httpMethod = 'GET';
       router = new Router(mockRequest);
 
-      router.get('/products/:category/:productId', handler as unknown as TcfApiHandler);
+      router.get(
+        '/products/:category/:productId',
+        handler as unknown as TcfApiHandler
+      );
 
       await router.serve();
 

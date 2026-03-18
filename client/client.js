@@ -15,13 +15,13 @@ const CWD = process.cwd();
 const getConfigFile = (filePath = '') => {
   if (filePath) {
     const stat = fs.lstatSync(filePath);
-    
+
     if (stat.isDirectory()) {
       const files = fs.readdirSync(filePath);
-      
+
       for (const file of files) {
         const fileAbsolutePath = path.join(filePath, file);
-        
+
         if (
           fs.lstatSync(fileAbsolutePath).isFile() &&
           (file.endsWith('tcf.config.json') || file.endsWith('tcf.config.js'))
@@ -29,13 +29,13 @@ const getConfigFile = (filePath = '') => {
           return require(fileAbsolutePath);
         }
       }
-      
+
       throw new Error('no config file found');
     } else {
       return require(path.resolve(filePath));
     }
   }
-  
+
   return defaultConfig;
 };
 
@@ -75,7 +75,7 @@ const functionInquiry = [
     name: 'language',
     default: 'typescript',
     choices: ['typescript', 'javascript'],
-    filter: function(val) {
+    filter: function (val) {
       return val.toLowerCase();
     }
   },
@@ -122,16 +122,16 @@ const actionInit = () => {
  */
 const actionDev = (configPath, cmd) => {
   const execFilePath = path.join(dir, `server.ts`);
-  
+
   if (configPath && !path.isAbsolute(configPath)) {
     configPath = path.join(CWD, configPath);
   }
-  
+
   const nodeFiles = [
     path.join(dir, '../node_modules/ts-node/dist/bin.js'),
     path.join(dir, '../../ts-node/dist/bin.js')
   ];
-  
+
   let nodeFilePath = '';
   for (const file of nodeFiles) {
     if (fs.existsSync(file)) {
@@ -139,19 +139,19 @@ const actionDev = (configPath, cmd) => {
       break;
     }
   }
-  
+
   const subProcess = exec(
     `node "${nodeFilePath}" "${execFilePath}" "${CWD}" "${configPath || CWD}"`,
     {
       maxBuffer: 1024 * 2000
     },
-    function(err, stdout, stderr) {
+    function (err, stdout, stderr) {
       if (err) {
         console.error(err);
       }
     }
   );
-  
+
   subProcess.stdout.on('data', (data) => {
     console.log(data.toString());
   });
@@ -164,13 +164,17 @@ const actionDev = (configPath, cmd) => {
 const createLayerProcess = (result) => {
   const config = getConfigFile(result.configFile);
   const layerRootDir = path.join(result.cwd || CWD, config.layerPath || '');
-  
+
   if (!fs.existsSync(layerRootDir)) {
     fs.mkdirSync(layerRootDir);
   }
-  
-  const layerDir = path.join(result.cwd || CWD, config.layerPath || '', result.layerName);
-  
+
+  const layerDir = path.join(
+    result.cwd || CWD,
+    config.layerPath || '',
+    result.layerName
+  );
+
   if (fs.existsSync(layerDir)) {
     throw new Error('Layer exists, please check again.');
   } else {
@@ -184,15 +188,20 @@ const createLayerProcess = (result) => {
  */
 const createFunctionProcess = (result) => {
   const config = getConfigFile(result.configFile);
-  const functionDir = path.join(result.cwd || CWD, config.appPath || '', result.functionName);
-  
+  const functionDir = path.join(
+    result.cwd || CWD,
+    config.appPath || '',
+    result.functionName
+  );
+
   if (fs.existsSync(functionDir)) {
     throw new Error('Function exists, please check again.');
   } else {
     fs.mkdirSync(functionDir);
   }
-  
-  const packageName = result.language === 'typescript' ? 'package-ts.json' : 'package-js.json';
+
+  const packageName =
+    result.language === 'typescript' ? 'package-ts.json' : 'package-js.json';
   const packageFilePath = path.join(dir, `template/${packageName}`);
   const tsConfigFilePath = path.join(dir, 'template/tsconfig.json');
   const indexFilePath = path.join(
@@ -203,36 +212,39 @@ const createFunctionProcess = (result) => {
     dir,
     `template/routers/demo.router.${result.language === 'typescript' ? 'ts' : 'js'}`
   );
-  
+
   const packageContent = require(packageFilePath);
   packageContent.name = result.functionName;
-  
+
   if (result.isWebservice) {
     packageContent.webservice.path = result.urlPath;
   } else {
     delete packageContent.webservice;
   }
-  
+
   fs.writeFileSync(
     path.join(functionDir, 'package.json'),
     JSON.stringify(packageContent, null, 2)
   );
-  
+
   fs.copyFileSync(
     indexFilePath,
-    path.join(functionDir, `index.${result.language === 'typescript' ? 'ts' : 'js'}`)
+    path.join(
+      functionDir,
+      `index.${result.language === 'typescript' ? 'ts' : 'js'}`
+    )
   );
-  
-  fs.copyFileSync(
-    tsConfigFilePath,
-    path.join(functionDir, 'tsconfig.json')
-  );
-  
+
+  fs.copyFileSync(tsConfigFilePath, path.join(functionDir, 'tsconfig.json'));
+
   fs.mkdirSync(path.join(functionDir, 'routers'));
-  
+
   fs.copyFileSync(
     routerFilePath,
-    path.join(functionDir, `routers/demo.router.${result.language === 'typescript' ? 'ts' : 'js'}`)
+    path.join(
+      functionDir,
+      `routers/demo.router.${result.language === 'typescript' ? 'ts' : 'js'}`
+    )
   );
 };
 
@@ -264,38 +276,38 @@ const actionCreate = async (component, cmd) => {
  */
 const actionNew = async (projectName, cmd) => {
   const projectPath = path.join(CWD, projectName);
-  
+
   if (fs.existsSync(projectPath)) {
     throw new Error('Project exists, please check again.');
   } else {
     fs.mkdirSync(projectPath);
   }
-  
+
   fs.mkdirSync(path.join(projectPath, 'functions'));
-  
+
   const packageFilePath = path.join(dir, `template/package.json`);
   const versionPath = path.join(dir, '../package.json');
   const version = require(versionPath).version;
   const packageContent = require(packageFilePath);
-  
+
   packageContent.name = projectName;
   packageContent.dependencies['tcf-router'] = version;
-  
+
   fs.writeFileSync(
     path.join(projectPath, 'package.json'),
     JSON.stringify(packageContent, null, 2)
   );
-  
+
   fs.copyFileSync(
     path.join(dir, 'template/tcf.config.json'),
     path.join(projectPath, 'tcf.config.json')
   );
-  
+
   fs.copyFileSync(
     path.join(dir, 'template/tcf.ci.js'),
     path.join(projectPath, 'tcf.ci.js')
   );
-  
+
   createFunctionProcess({
     functionName: 'tcf-demo-function',
     language: 'typescript',
@@ -303,17 +315,17 @@ const actionNew = async (projectName, cmd) => {
     urlPath: '/',
     cwd: path.join(projectPath, 'functions')
   });
-  
+
   console.log(`project ${projectName} has been created!`);
-  
+
   const { default: inquirer } = await import('inquirer');
   const result = await inquirer.prompt(installInquiry);
-  
+
   if (result.installNow === 'yes') {
     const subProcess = exec(`cd ${projectName} && npm install`, {
       maxBuffer: 1024 * 2000
     });
-    
+
     subProcess.stdout.on('data', (data) => {
       console.log(data.toString());
     });
@@ -327,24 +339,24 @@ const actionNew = async (projectName, cmd) => {
  */
 const actionDeploy = async (configPath, cmd) => {
   const execFilePath = path.join(dir, `deploy.js`);
-  
+
   if (configPath && !path.isAbsolute(configPath)) {
     configPath = path.join(CWD, configPath);
   }
-  
+
   const subProcess = exec(
     `node "${execFilePath}" "${CWD}" "${configPath || CWD}"`,
     {
       maxBuffer: 1024 * 2000
     },
-    function(err, stdout, stderr) {
+    function (err, stdout, stderr) {
       if (err || (stderr && stderr.includes('Error'))) {
         console.error(err, stderr);
         throw new Error(err);
       }
     }
   );
-  
+
   subProcess.stdout.on('data', (data) => {
     console.log(data.toString());
   });
@@ -353,7 +365,9 @@ const actionDeploy = async (configPath, cmd) => {
 program
   .version(pkg.version)
   .command('create <component> [configFile]')
-  .description('create a component, valid component values are [function, layer]')
+  .description(
+    'create a component, valid component values are [function, layer]'
+  )
   .action(actionCreate);
 
 program

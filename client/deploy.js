@@ -16,13 +16,13 @@ const args = process.argv.slice(2);
 const getConfigFile = async (filePath = '') => {
   if (filePath) {
     const stat = fs.lstatSync(filePath);
-    
+
     if (stat.isDirectory()) {
       const files = fs.readdirSync(filePath);
-      
+
       for (const file of files) {
         const fileAbsolutePath = path.join(filePath, file);
-        
+
         if (
           fs.lstatSync(fileAbsolutePath).isFile() &&
           (file.endsWith('tcf.ci.json') || file.endsWith('tcf.ci.js'))
@@ -30,13 +30,13 @@ const getConfigFile = async (filePath = '') => {
           return require(fileAbsolutePath);
         }
       }
-      
+
       throw new Error('no config file found');
     } else {
       return require(filePath);
     }
   }
-  
+
   return defaultConfig;
 };
 
@@ -70,12 +70,14 @@ const getActiveApp = (functionPath, ciConfig) => {
     }
 
     const config = require(path.join(functionPath, 'package.json'));
-    
+
     if (
       config.ignore === true ||
-      (ciConfig.ignoreFuncName && ciConfig.ignoreFuncName.includes(config.name)) ||
-      (ciConfig.focusFuncName && ciConfig.focusFuncName.length > 0 && 
-       !ciConfig.focusFuncName.includes(config.name))
+      (ciConfig.ignoreFuncName &&
+        ciConfig.ignoreFuncName.includes(config.name)) ||
+      (ciConfig.focusFuncName &&
+        ciConfig.focusFuncName.length > 0 &&
+        !ciConfig.focusFuncName.includes(config.name))
     ) {
       return false;
     }
@@ -105,23 +107,23 @@ const getApps = async (config) => {
   if (typeof config.appPath === 'string') {
     config.appPath = [config.appPath];
   }
-  
+
   const appListPromises = [];
-  
+
   for (const appPath of config.appPath) {
     const folderPath = path.join(args[0], appPath);
     const items = await readFolder(folderPath);
-    
+
     for (const appName of items) {
       const appFullPath = path.join(folderPath, appName);
       const status = fs.lstatSync(appFullPath);
-      
+
       if (status.isDirectory()) {
         appListPromises.push(getActiveApp(appFullPath, config));
       }
     }
   }
-  
+
   const results = await Promise.all(appListPromises);
   return results.filter((result) => !!result);
 };
@@ -134,13 +136,13 @@ const getApps = async (config) => {
  */
 const formatLayers = (validLayers, layers = []) => {
   const result = [];
-  
+
   for (const layer of layers) {
     if (layer.version) {
       const vl = validLayers.filter((ele) => {
         return ele.name === layer.name && ele.version === layer.version;
       });
-      
+
       if (vl.length === 1) {
         result.push(layer);
       } else {
@@ -150,7 +152,7 @@ const formatLayers = (validLayers, layers = []) => {
       const vl = validLayers.filter((ele) => {
         return ele.name === layer.name;
       });
-      
+
       if (vl.length > 0) {
         result.push(vl[vl.length - 1]);
       } else {
@@ -158,7 +160,7 @@ const formatLayers = (validLayers, layers = []) => {
       }
     }
   }
-  
+
   return result;
 };
 
@@ -170,13 +172,13 @@ const formatLayers = (validLayers, layers = []) => {
  */
 const getEnvVariables = (set, list = []) => {
   const result = {};
-  
+
   for (const v of list) {
     if (set[v] !== undefined) {
       result[v] = set[v];
     }
   }
-  
+
   return result;
 };
 
@@ -193,7 +195,7 @@ const executeProcess = async (cmdPath, cmd) => {
       {
         maxBuffer: 1024 * 2000
       },
-      function(err, stdout, stderr) {
+      function (err, stdout, stderr) {
         if (err) {
           console.error(err);
           reject(err);
@@ -217,9 +219,16 @@ const executeProcess = async (cmdPath, cmd) => {
  * @param {string} envId - Environment ID
  * @param {object} envVariableSet - Environment variable set
  */
-const deploy = async (ciConfig, apps, secretId, secretKey, envId, envVariableSet) => {
+const deploy = async (
+  ciConfig,
+  apps,
+  secretId,
+  secretKey,
+  envId,
+  envVariableSet
+) => {
   const client = new TcfDeployClient(secretId, secretKey, envId);
-  
+
   // Layer check
   const { Layers } = await client.listLayers();
   const validLayers = Layers.map((layer) => {
@@ -251,11 +260,14 @@ const deploy = async (ciConfig, apps, secretId, secretKey, envId, envVariableSet
         runtime: app.runtime || 'Nodejs16.13',
         Layers: formatLayers(validLayers, app.layers),
         layers: formatLayers(validLayers, app.layers),
-        envVariables: getEnvVariables(envVariableSet || defaultConfig.envVariables, app.envVariables),
+        envVariables: getEnvVariables(
+          envVariableSet || defaultConfig.envVariables,
+          app.envVariables
+        ),
         triggers: app.triggers
       }
     };
-    
+
     if (app.functionConfigOnly === true) {
       await client.updateFunctionConfig(config.func);
     } else {
@@ -266,10 +278,10 @@ const deploy = async (ciConfig, apps, secretId, secretKey, envId, envVariableSet
       } else {
         config.functionRootPath = path.resolve(app.functionPath, '../');
       }
-      
+
       await client.createFunction(config);
       console.log(`${app.name} OK at ${new Date().toLocaleString()}`);
-      
+
       if (app.path) {
         await client.createWebService(app.path, app.name);
         console.log(
@@ -289,22 +301,22 @@ const deploy = async (ciConfig, apps, secretId, secretKey, envId, envVariableSet
  */
 const uploadLayers = async (layers, secretId, secretKey, envId) => {
   const client = new TcfDeployClient(secretId, secretKey, envId);
-  
+
   for (const layer of layers) {
     let layerPath = path.isAbsolute(layer.path)
       ? layer.path
       : path.join(args[0], layer.path);
-    
+
     const items = await readFolder(layerPath);
-    
+
     if (items.includes('package.json')) {
       const config = require(path.join(layerPath, 'package.json'));
-      
+
       if (typeof config.devDependencies?.typescript === 'string') {
         await executeProcess(layerPath, 'tsc');
       }
     }
-    
+
     await client.createLayer(layer.name, layerPath);
   }
 };
@@ -315,12 +327,24 @@ const uploadLayers = async (layers, secretId, secretKey, envId) => {
 getConfigFile(args[1]).then(async (config) => {
   try {
     if (config.layers && config.layers.length > 0) {
-      await uploadLayers(config.layers, config.secretId, config.secretKey, config.envId);
+      await uploadLayers(
+        config.layers,
+        config.secretId,
+        config.secretKey,
+        config.envId
+      );
     }
-    
+
     if (config.appPath) {
       const apps = await getApps(config);
-      await deploy(config, apps, config.secretId, config.secretKey, config.envId, config.envVariables);
+      await deploy(
+        config,
+        apps,
+        config.secretId,
+        config.secretKey,
+        config.envId,
+        config.envVariables
+      );
     }
   } catch (error) {
     console.error('Deployment failed:', error.message);

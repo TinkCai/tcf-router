@@ -3,7 +3,9 @@ process.env.NODE_ENV = 'test';
 process.env.ENCRYPTSECRET = 'test-secret-key';
 
 // Helper function to create mock requests
-export function createMockRequest(overrides?: Partial<Record<string, unknown>>) {
+export function createMockRequest(
+  overrides?: Partial<Record<string, unknown>>
+) {
   return {
     httpMethod: 'GET',
     path: '/',
@@ -23,5 +25,5 @@ export function createMockRequest(overrides?: Partial<Record<string, unknown>>) 
 
 // Helper to wait for async operations
 export function waitForMs(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

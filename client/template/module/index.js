@@ -1,5 +1,5 @@
 module.exports = {
-  getMyRoles: ()=> {
+  getMyRoles: () => {
     return ['admin', 'operator'];
   }
 };

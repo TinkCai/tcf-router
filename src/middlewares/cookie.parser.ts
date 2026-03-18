@@ -20,7 +20,7 @@ const cookieParser: TcfApiHandler = async (
   }
 
   const cookieHeader = req.headers.cookie;
-  
+
   req.cookies = Object.create(null);
   req.signedCookies = Object.create(null);
 
@@ -37,7 +37,7 @@ const cookieParser: TcfApiHandler = async (
   req.cookies = parseJsonCookies(req.cookies);
 
   Object.assign(req.cookies, req.signedCookies);
-  
+
   next();
 };
 
@@ -65,7 +65,7 @@ function parseJsonCookie(value: string): any {
  */
 function parseJsonCookies(cookies: Record<string, any>): Record<string, any> {
   const result = { ...cookies };
-  
+
   for (const [key, value] of Object.entries(result)) {
     const parsed = parseJsonCookie(value);
     if (parsed !== undefined) {

@@ -25,9 +25,10 @@ const getConfigFile = async (filePath = ''): Promise<EnvConfig> => {
 
     if (stat.isDirectory()) {
       const files = fs.readdirSync(filePath);
-      const configFile = files.find(file =>
-        fs.lstatSync(path.join(filePath, file)).isFile() &&
-        (file.endsWith('tcf.config.json') || file.endsWith('tcf.config.js'))
+      const configFile = files.find(
+        (file) =>
+          fs.lstatSync(path.join(filePath, file)).isFile() &&
+          (file.endsWith('tcf.config.json') || file.endsWith('tcf.config.js'))
       );
 
       if (configFile) {
@@ -98,10 +99,11 @@ const getApps = (config: EnvConfig): Promise<TcfFunctionApp[]> => {
           }
         }
 
-        Promise.all(appListPromises)
-          .then((results) => {
-            resolve(results.filter((result): result is TcfFunctionApp => !!result));
-          });
+        Promise.all(appListPromises).then((results) => {
+          resolve(
+            results.filter((result): result is TcfFunctionApp => !!result)
+          );
+        });
       })
       .catch(reject);
   });
@@ -142,14 +144,19 @@ const formatHttpsOption = (config: EnvConfig): ServerOptions => {
  * @param appPath - Path to app directory
  * @returns Promise resolving to TcfFunctionApp or false if inactive
  */
-const checkActiveApp = async (appPath: string): Promise<TcfFunctionApp | false> => {
+const checkActiveApp = async (
+  appPath: string
+): Promise<TcfFunctionApp | false> => {
   const items = await readFolder(appPath);
 
   if (!items.includes('package.json')) {
     return false;
   }
 
-  const packageContent = fs.readFileSync(path.join(appPath, 'package.json'), 'utf-8');
+  const packageContent = fs.readFileSync(
+    path.join(appPath, 'package.json'),
+    'utf-8'
+  );
   const config = JSON.parse(packageContent);
 
   if (config.ignore === true) {
@@ -171,9 +178,12 @@ const checkActiveApp = async (appPath: string): Promise<TcfFunctionApp | false> 
  * @param requestPath - Request path to match
  * @returns Matching TcfFunctionApp or undefined
  */
-const findFunctionApp = (functionApps: TcfFunctionApp[], requestPath: string): TcfFunctionApp | undefined => {
+const findFunctionApp = (
+  functionApps: TcfFunctionApp[],
+  requestPath: string
+): TcfFunctionApp | undefined => {
   const matches = functionApps
-    .map(app => {
+    .map((app) => {
       const regex = pathToRegexp(`${app.path}(.*)`);
       const result = regex.exec(requestPath);
       return { app, result, match: !!result };
@@ -208,7 +218,7 @@ const findFunctionApp = (functionApps: TcfFunctionApp[], requestPath: string): T
     const apps = await getApps(config);
 
     console.log(
-      apps.map(app => ({
+      apps.map((app) => ({
         path: app.path,
         name: app.name
       }))
@@ -247,7 +257,10 @@ const findFunctionApp = (functionApps: TcfFunctionApp[], requestPath: string): T
       formatHttpsOption(config)
     );
   } catch (error) {
-    console.error('Failed to start server:', error instanceof Error ? error.message : error);
+    console.error(
+      'Failed to start server:',
+      error instanceof Error ? error.message : error
+    );
     process.exit(1);
   }
 })();

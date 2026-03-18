@@ -14,20 +14,24 @@ const protocolMiddleware: TcfApiHandler = async (
 
   if (clientProtocol === 'http') {
     const domain = process.env.DOMAIN;
-    
+
     if (!domain) {
-      console.warn('DOMAIN environment variable is not set, skipping HTTPS redirect');
+      console.warn(
+        'DOMAIN environment variable is not set, skipping HTTPS redirect'
+      );
       next();
       return;
     }
 
     const queryParams = req.queryStringParameters;
-    const queryString = queryParams 
-      ? new URLSearchParams(Object.entries(queryParams) as [string, string][]).toString()
+    const queryString = queryParams
+      ? new URLSearchParams(
+          Object.entries(queryParams) as [string, string][]
+        ).toString()
       : '';
 
     const redirectUrl = `https://${domain}${req.path}${queryString ? '?' : ''}${queryString}`;
-    
+
     res.redirect(redirectUrl);
     return;
   }

@@ -13,3 +13,7 @@ yarn.lock
 demo/
 package-lock.json
 .idea
+
+types
+dist
+coverage

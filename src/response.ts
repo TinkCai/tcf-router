@@ -36,7 +36,9 @@ const isJsonRequest = (headers: Record<string, any>): boolean => {
   }
 
   const accepts = headers.accept.split(',');
-  return accepts.some((accept: string | string[]) => accept.includes('application/json'));
+  return accepts.some((accept: string | string[]) =>
+    accept.includes('application/json')
+  );
 };
 
 /**
@@ -71,8 +73,7 @@ export class Response {
     this.headers = {};
     this.options = options;
     this.eventsOnFinish = [];
-    this.finalEvent = () => {
-    };
+    this.finalEvent = () => {};
     this.statusCode = 0;
   }
 
@@ -121,7 +122,9 @@ export class Response {
       return;
     }
     this._end = true;
-    const onFinishEventResults = this.eventsOnFinish.map((event) => event(this));
+    const onFinishEventResults = this.eventsOnFinish.map((event) =>
+      event(this)
+    );
 
     Promise.all(onFinishEventResults).then(() => {
       const formattedResponse = this.formatResponse(value);
@@ -132,7 +135,8 @@ export class Response {
             if (!formattedResponse.multiValueHeaders) {
               formattedResponse.multiValueHeaders = {};
             }
-            formattedResponse.multiValueHeaders[key] = formattedResponse.headers[key];
+            formattedResponse.multiValueHeaders[key] =
+              formattedResponse.headers[key];
             delete formattedResponse.headers[key];
           }
         }
@@ -148,7 +152,9 @@ export class Response {
    * @param value - The response value to format
    * @returns Formatted SimpleResponse object
    */
-  private formatResponse(value: string | Record<string, any> | any[] | SimpleResponse): SimpleResponse {
+  private formatResponse(
+    value: string | Record<string, any> | any[] | SimpleResponse
+  ): SimpleResponse {
     if (this.isSimpleResponse(value)) {
       return {
         ...value,
@@ -259,7 +265,9 @@ export class Response {
 
       this.end(response);
     } catch (error) {
-      this.error(error instanceof Error ? error : new Error('Template rendering failed'));
+      this.error(
+        error instanceof Error ? error : new Error('Template rendering failed')
+      );
     }
   }
 
@@ -268,7 +276,9 @@ export class Response {
    * @param url - URL to redirect to
    */
   redirect(url: string) {
-    const encodedUrl = url.replace(/([^\u0000-\u00FF])/g, (match) => encodeURI(match));
+    const encodedUrl = url.replace(/([^\u0000-\u00FF])/g, (match) =>
+      encodeURI(match)
+    );
 
     this.end({
       statusCode: this.statusCode || 302,
@@ -311,7 +321,9 @@ export class Response {
    * @param value - Cookie value to serialize
    * @returns Serialized cookie value string
    */
-  private serializeCookieValue(value: string | number | Record<string, any>): string {
+  private serializeCookieValue(
+    value: string | number | Record<string, any>
+  ): string {
     if (typeof value === 'object') {
       return 'j:' + JSON.stringify(value);
     }
@@ -383,7 +395,10 @@ export class Response {
    * @param statusCode - HTTP status code
    * @returns SimpleResponse with error details
    */
-  private createErrorResponse(e: Error | Record<string, any> | string, statusCode: number): SimpleResponse {
+  private createErrorResponse(
+    e: Error | Record<string, any> | string,
+    statusCode: number
+  ): SimpleResponse {
     const httpMethod = this.req.httpMethod || 'GET';
     const headers = this.req.headers || {};
     const isGetRequest = httpMethod === 'GET';
@@ -401,7 +416,9 @@ export class Response {
    * @param e - Error data
    * @returns SimpleResponse with plain text error body
    */
-  private createPlainTextError(e: Error | Record<string, any> | string): SimpleResponse {
+  private createPlainTextError(
+    e: Error | Record<string, any> | string
+  ): SimpleResponse {
     let body: string;
     if (e instanceof Error) {
       body = e.stack ?? e.message;
@@ -426,7 +443,10 @@ export class Response {
    * @param statusCode - HTTP status code
    * @returns SimpleResponse with JSON error body containing statusCode and message/stack
    */
-  private createJsonError(e: Error | Record<string, any> | string, statusCode: number): SimpleResponse {
+  private createJsonError(
+    e: Error | Record<string, any> | string,
+    statusCode: number
+  ): SimpleResponse {
     let body: Record<string, any>;
 
     if (e instanceof Error) {

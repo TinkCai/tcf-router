@@ -38,7 +38,7 @@ describe.skip('Response', () => {
     it('should accept various HTTP status codes', () => {
       const statusCodes = [200, 201, 400, 404, 500];
 
-      statusCodes.forEach(code => {
+      statusCodes.forEach((code) => {
         response.status(code);
         expect(response.statusCode).toBe(code);
       });
@@ -52,7 +52,9 @@ describe.skip('Response', () => {
       response.onFinish(() => {
         expect(response.result).toBeDefined();
         expect(response.result?.statusCode).toBe(200);
-        expect(response.result?.headers?.['content-type']).toBe('application/json');
+        expect(response.result?.headers?.['content-type']).toBe(
+          'application/json'
+        );
         expect(JSON.parse(response.result?.body as string)).toEqual(testData);
         done();
       });
@@ -75,8 +77,7 @@ describe.skip('Response', () => {
 
   describe('text', () => {
     it.skip('should send plain text response', (done) => {
-      const finishEvent = () => {
-      };
+      const finishEvent = () => {};
       const testText = 'Hello World';
 
       response.onFinish(finishEvent);
