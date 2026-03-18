@@ -1,7 +1,7 @@
 import { Response } from './response';
 import { match } from 'path-to-regexp';
-
-const fs = require('fs');
+import fs from 'fs';
+import * as console from 'node:console';
 
 export type TcfApiHandler = (
   req: TcfApiRequest,
@@ -9,30 +9,52 @@ export type TcfApiHandler = (
   next: () => void,
   options?: Record<string, any>
 ) => Promise<void>;
-export type AddRoutes = (sr: Router) => {};
+
+export type AddRoutes = (sr: Router) => void;
+
 export type ContinueFlag = { result?: any; next: boolean };
+
 export { default as bodyParser } from './middlewares/body.parser';
 export { default as staticHandler } from './middlewares/static.handler';
 export { default as cookieParser } from './middlewares/cookie.parser';
 
+/**
+ * LayerLoader for loading shared code from cloud function layers
+ */
 export class LayerLoader {
   rootPath: string;
   layers: string[];
 
-  constructor(layers?: string[], rootPath?: string, ) {
+  constructor(layers?: string[], rootPath?: string) {
     this.rootPath = rootPath || process.env.LAYER_PATH || '/opt';
-    this.layers = layers || (process.env.LAYER_NAMES ? process.env.LAYER_NAMES?.split(',') : '') || [];
+    
+    if (layers) {
+      this.layers = layers;
+    } else if (process.env.LAYER_NAMES) {
+      this.layers = process.env.LAYER_NAMES.split(',').filter(name => name.trim() !== '');
+    } else {
+      this.layers = [];
+    }
   }
 
-  async load(filename: string) {
+  async load(filename: string): Promise<any> {
     let targetPath = '';
-    this.layers.forEach((layer) => {
-      const pathA = fs.existsSync(`${this.rootPath}/${layer}/${filename}.ts`);
-      const pathB = fs.existsSync(`${this.rootPath}/${layer}/${filename}.js`);
-      if (pathA || pathB) {
-        targetPath = `${this.rootPath}/${layer}/${filename}`;
+    
+    for (const layer of this.layers) {
+      const tsPath = `${this.rootPath}/${layer}/${filename}.ts`;
+      const jsPath = `${this.rootPath}/${layer}/${filename}.js`;
+      
+      if (fs.existsSync(tsPath)) {
+        targetPath = tsPath;
+        break;
       }
-    });
+      
+      if (fs.existsSync(jsPath)) {
+        targetPath = jsPath;
+        break;
+      }
+    }
+
     if (targetPath) {
       return import(targetPath);
     } else {
@@ -67,7 +89,7 @@ export interface TcfApiResponse extends Response {
   multiValueHeaders?: Record<string, any>;
 }
 
-export interface TcfContext extends Record<string, string> {
+export interface TcfContext extends Record<string, any> {
 }
 
 export interface TcfFunctionApp {
@@ -90,16 +112,26 @@ export interface TcfFunctionConfig {
   layers: {
     name: string;
     version?: number;
-  }[],
-  dependencies: { [name: string]: string },
-  devDependencies?: { [name: string]: string }
-  triggers?: { name: string, type: string, config: string }[]
+  }[];
+  dependencies: { [name: string]: string };
+  devDependencies?: { [name: string]: string };
+  triggers?: { name: string; type: string; config: string }[];
 }
 
 export type RoutePath = TcfApiHandler | string | string[];
 
+interface Handler {
+  func?: TcfApiHandler;
+  params?: Record<string, string>;
+  path?: string;
+}
+
+/**
+ * Router class for handling HTTP routes in TCF environment
+ * Provides Express-like routing functionality
+ */
 export class Router {
-  private readonly _handlers: any[];
+  private readonly _handlers: Handler[];
   private readonly _request: TcfApiRequest;
   private readonly options: Record<string, any>;
   public _response: Response;
@@ -115,9 +147,10 @@ export class Router {
     paths: RoutePath,
     handler?: TcfApiHandler,
     method?: string
-  ) {
+  ): void {
     let fixedPaths: string[];
     const pathPrefix = this.options.pathPrefix || '';
+
     if (typeof paths === 'function') {
       handler = paths;
       if (!pathPrefix) {
@@ -127,20 +160,21 @@ export class Router {
         paths = [''];
       }
     }
+
     if (method === 'ALL' || method === this._request.httpMethod) {
       if (!(paths instanceof Array)) {
-        paths = [paths];
+        paths = [paths as string];
       }
-      fixedPaths = paths.map((path) => {
-        return `${pathPrefix}${path}`;
-      });
+
+      fixedPaths = (paths as string[]).map((path) => `${pathPrefix}${path}`);
+
       for (const path of fixedPaths) {
-        const regTester = match(path, { decode: decodeURIComponent });
-        const testResult = regTester(this._request.path);
+        const matcher = match(path, { decode: decodeURIComponent });
+        const testResult = matcher(this._request.path);
         if (testResult) {
           this._handlers.push({
             func: handler,
-            params: testResult.params,
+            params: testResult.params as Record<string, string>,
             path
           });
         }
@@ -148,62 +182,74 @@ export class Router {
     }
   }
 
-  extends(prefix: string | AddRoutes, addRoute?: AddRoutes | string) {
-    let sr;
+  extends(prefix: string | AddRoutes, addRoute?: AddRoutes): void {
+    let sr: Router;
+
     if (typeof prefix === 'function') {
       sr = new Router(this._request);
       addRoute = prefix;
     } else {
       sr = new Router(this._request, { pathPrefix: prefix });
     }
-    (addRoute as AddRoutes)(sr);
-    for (const handler of sr._handlers) {
-      this._handlers.push(handler);
+
+    if (typeof addRoute === 'function') {
+      addRoute(sr);
+      
+      for (const handler of sr._handlers) {
+        this._handlers.push(handler);
+      }
     }
   }
 
-  put(paths: RoutePath, handler?: TcfApiHandler) {
+  getHandles() {
+    return this._handlers;
+  }
+
+  put(paths: RoutePath, handler?: TcfApiHandler): void {
     this.add(paths, handler, 'PUT');
   }
 
-  get(paths: RoutePath, handler?: TcfApiHandler) {
+  get(paths: RoutePath, handler?: TcfApiHandler): void {
     this.add(paths, handler, 'GET');
   }
 
-  post(paths: RoutePath, handler?: TcfApiHandler) {
+  post(paths: RoutePath, handler?: TcfApiHandler): void {
     this.add(paths, handler, 'POST');
   }
 
-  del(paths: RoutePath, handler?: TcfApiHandler) {
+  del(paths: RoutePath, handler?: TcfApiHandler): void {
     this.add(paths, handler, 'DELETE');
   }
 
-  use(paths: RoutePath, handler?: TcfApiHandler) {
+  use(paths: RoutePath, handler?: TcfApiHandler): void {
     this.add(paths, handler, 'ALL');
   }
 
   executeHandler(
-    handler: {
-      func: TcfApiHandler;
-      params: Record<string, string>;
-    },
+    handler: Handler,
     flags: ContinueFlag
   ): Promise<{ continue: boolean; result?: any }> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        this._response.finally(() => {
-          if (flags.next) {
-            console.error('the next() was executed, so there is no result');
-          } else {
-            flags.result = true;
-            resolve({
-              continue: false,
-              result: this._response.result
-            });
-          }
-        });
-        this._request.params = handler.params;
-        await handler.func(
+    return new Promise((resolve, reject) => {
+      const onFinally = () => {
+        if (flags.next) {
+          console.error('the next() was executed, so there is no result');
+        } else {
+          flags.result = true;
+          resolve({
+            continue: false,
+            result: this._response.result
+          });
+        }
+      };
+
+      this._response.finally(onFinally);
+
+      if (handler.params) {
+        this._request.params = { ...handler.params };
+      }
+
+      if (handler.func) {
+        handler.func(
           this._request,
           this._response,
           () => {
@@ -217,23 +263,24 @@ export class Router {
             }
           },
           this.options
-        );
-      } catch (e) {
-        reject(e);
+        ).catch(reject);
       }
     });
   }
 
   /**
-   * start the route server
+   * Execute all matched handlers and return the response
+   * @returns Promise resolving to response result
    */
-  async serve() {
+  async serve(): Promise<any> {
     for (const handler of this._handlers) {
-      const flags = {
+      const flags: ContinueFlag = {
         next: false,
         result: false
       };
+
       const out = await this.executeHandler(handler, flags);
+
       if (!out.continue) {
         return out.result;
       }
@@ -243,6 +290,9 @@ export class Router {
 
 export { Simulator } from './simulator';
 
+/**
+ * Response wrapper for Mini Program cloud functions
+ */
 export class MpFunctionResponse {
   public result: any;
   private finalEvent: (res: MpFunctionResponse) => void;
@@ -254,11 +304,11 @@ export class MpFunctionResponse {
     this._end = false;
   }
 
-  finally(callback: (res: MpFunctionResponse) => void) {
+  finally(callback: (res: MpFunctionResponse) => void): void {
     this.finalEvent = callback;
   }
 
-  end(value: any) {
+  end(value: any): void {
     this.result = value;
     this._end = true;
     this.finalEvent(this);
@@ -274,46 +324,58 @@ export type MpFunctionHandler = (
 
 export type MpRoutePath = MpFunctionHandler | string | string[];
 
+interface MpHandler {
+  func?: MpFunctionHandler;
+  params?: Record<string, string>;
+  path?: string;
+}
+
+/**
+ * Router class for WeChat Mini Program cloud functions
+ */
 export class MpFunctionRouter {
-  private _handlers: any[];
-  private _request: { body: any; path: string, params?: any };
+  private readonly _handlers: MpHandler[];
+  private _request: { body: any; path: string; params?: any };
   private _response: MpFunctionResponse;
   private context: any;
 
-
   constructor(event: any, context?: any) {
     this._handlers = [];
-    this._request = { body: event, path: event.$url };
-    delete event.$url;
-    this._response = new MpFunctionResponse();
+    this._request = { 
+      body: { ...event },
+      path: event.$url 
+    };
+    
     this.context = context;
+    this._response = new MpFunctionResponse();
   }
 
-  use(path: MpRoutePath, handler?: MpFunctionHandler) {
+  use(path: MpRoutePath, handler?: MpFunctionHandler): void {
     if (typeof path === 'function') {
       handler = path;
       path = '';
     }
 
-    this.add(path, handler);
+    this.add(path as string | string[], handler);
   }
 
-  add(paths: string | string[], handler?: MpFunctionHandler) {
+  add(paths: string | string[] | MpFunctionHandler, handler?: MpFunctionHandler): void {
     if (typeof paths === 'function') {
       handler = paths;
       this._handlers.push({ func: handler });
       return;
     }
-    if (!(paths instanceof Array)) {
-      paths = [paths as string];
-    }
-    for (const path of paths) {
-      const regTester = match(path, { decode: decodeURIComponent });
-      const testResult = regTester(this._request.path);
+
+    const pathArray: string[] = paths instanceof Array ? paths : [paths as string];
+
+    for (const path of pathArray) {
+      const matcher = match(path, { decode: decodeURIComponent });
+      const testResult = matcher(this._request.path);
+
       if (testResult) {
         this._handlers.push({
           func: handler,
-          params: testResult.params,
+          params: testResult.params as Record<string, string>,
           path
         });
       }
@@ -321,27 +383,30 @@ export class MpFunctionRouter {
   }
 
   executeHandler(
-    handler: {
-      func: MpFunctionHandler;
-      params: Record<string, string>;
-    },
+    handler: MpHandler,
     flags: ContinueFlag
   ): Promise<{ continue: boolean; result?: any }> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        this._response.finally(() => {
-          if (flags.next) {
-            console.error('the next() was executed, so there is no result');
-          } else {
-            flags.result = true;
-            resolve({
-              continue: false,
-              result: this._response.result
-            });
-          }
-        });
-        this._request.params = handler.params;
-        await handler.func(
+    return new Promise((resolve, reject) => {
+      const onFinally = () => {
+        if (flags.next) {
+          console.error('the next() was executed, so there is no result');
+        } else {
+          flags.result = true;
+          resolve({
+            continue: false,
+            result: this._response.result
+          });
+        }
+      };
+
+      this._response.finally(onFinally);
+
+      if (handler.params) {
+        this._request.params = { ...handler.params };
+      }
+
+      if (handler.func) {
+        handler.func(
           this._request,
           this._response,
           () => {
@@ -355,23 +420,24 @@ export class MpFunctionRouter {
             }
           },
           this.context
-        );
-      } catch (e) {
-        reject(e);
+        ).catch(reject);
       }
     });
   }
 
   /**
-   * start the route server
+   * Execute all matched handlers and return the response
+   * @returns Promise resolving to response result
    */
-  async serve() {
+  async serve(): Promise<any> {
     for (const handler of this._handlers) {
-      const flags = {
+      const flags: ContinueFlag = {
         next: false,
         result: false
       };
+
       const out = await this.executeHandler(handler, flags);
+
       if (!out.continue) {
         return out.result;
       }

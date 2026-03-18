@@ -10,6 +10,11 @@ import { CookieOptions } from 'express';
 
 const DEFAULT_SECRET = process.env.ENCRYPTSECRET || 'scf-stack';
 
+/**
+ * Creates a 404 Not Found response
+ * @param path - The resource path that was not found
+ * @returns A SimpleResponse object with 404 status and HTML body
+ */
 export const resourceNotFound = (path: string): SimpleResponse => {
   return {
     statusCode: 404,
@@ -20,18 +25,23 @@ export const resourceNotFound = (path: string): SimpleResponse => {
   };
 };
 
-const isJsonRequest = (headers: Record<string, any>) => {
-  if (headers.referer) {
-    const accepts = headers.accept.split(',');
-    for (const accept of accepts) {
-      if (accept.includes('application/json')) {
-        return true;
-      }
-    }
+/**
+ * Determines if the request expects JSON response based on Accept header
+ * @param headers - HTTP request headers
+ * @returns true if application/json is in the Accept header, false otherwise
+ */
+const isJsonRequest = (headers: Record<string, any>): boolean => {
+  if (!headers?.accept) {
+    return false;
   }
-  return false;
+
+  const accepts = headers.accept.split(',');
+  return accepts.some((accept: string | string[]) => accept.includes('application/json'));
 };
 
+/**
+ * SimpleResponse interface representing the HTTP response structure
+ */
 export interface SimpleResponse {
   body: { [name: string]: any } | string;
   isBase64Encoded?: boolean;
@@ -40,6 +50,10 @@ export interface SimpleResponse {
   multiValueHeaders?: { [name: string]: any };
 }
 
+/**
+ * Response class for handling HTTP responses in TCF API
+ * Provides methods for sending various response types (JSON, HTML, files, cookies, etc.)
+ */
 export class Response {
   private req: TcfApiRequest;
   private _res: SimpleResponse;
@@ -62,38 +76,59 @@ export class Response {
     this.statusCode = 0;
   }
 
+  /**
+   * Register a callback to be executed when the response finishes
+   * @param callback - Function to execute with the Response instance
+   */
   onFinish(callback: (res: Response) => any) {
     this.eventsOnFinish.push(callback);
   }
 
+  /**
+   * Set the final event callback that executes after response completion
+   * @param callback - Function to execute with the Response instance
+   */
   finally(callback: (res: Response) => void) {
     this.finalEvent = callback;
   }
 
+  /**
+   * Internal method to set HTTP status code
+   * @param code - HTTP status code
+   */
   _setStatus(code: number) {
     this.statusCode = code;
     this._res.statusCode = code;
   }
 
+  /**
+   * Set HTTP status code and return this for chaining
+   * @param code - HTTP status code (e.g., 200, 404, 500)
+   * @returns This Response instance for method chaining
+   */
   status(code: number) {
     this._setStatus(code);
     return this;
   }
 
+  /**
+   * End the response and send the final data
+   * @param value - Response data (string, object, array, or SimpleResponse)
+   */
   end(value: string | Record<string, any> | any[] | SimpleResponse) {
     if (this._end) {
       console.warn('Response has already been sent');
       return;
     }
-
     this._end = true;
-    const onFinishEventResults = this.eventsOnFinish.map(event => event(this));
+    const onFinishEventResults = this.eventsOnFinish.map((event) => event(this));
 
     Promise.all(onFinishEventResults).then(() => {
       const formattedResponse = this.formatResponse(value);
+
       if (formattedResponse.headers) {
-        for (let key in formattedResponse.headers) {
-          if (formattedResponse.headers[key] instanceof Array) {
+        for (const key in formattedResponse.headers) {
+          if (Array.isArray(formattedResponse.headers[key])) {
             if (!formattedResponse.multiValueHeaders) {
               formattedResponse.multiValueHeaders = {};
             }
@@ -102,16 +137,22 @@ export class Response {
           }
         }
       }
+
       this.result = formattedResponse;
       this.finalEvent(this);
     });
   }
 
+  /**
+   * Format response data into proper SimpleResponse structure
+   * @param value - The response value to format
+   * @returns Formatted SimpleResponse object
+   */
   private formatResponse(value: string | Record<string, any> | any[] | SimpleResponse): SimpleResponse {
     if (this.isSimpleResponse(value)) {
       return {
         ...value,
-        headers: Object.assign({}, value.headers ?? {}, this.headers)
+        headers: { ...value.headers, ...this.headers }
       };
     }
 
@@ -125,15 +166,29 @@ export class Response {
     };
   }
 
+  /**
+   * Type guard to check if value is a SimpleResponse
+   * @param value - Value to check
+   * @returns true if value is SimpleResponse, false otherwise
+   */
   private isSimpleResponse(value: any): value is SimpleResponse {
     return typeof value === 'object' && value !== null && 'statusCode' in value;
   }
 
+  /**
+   * Send JSON response
+   * @param value - JSON-serializable object or array
+   * @returns This Response instance for method chaining
+   */
   json(value: Record<string, any> | any[]) {
     this.end(value);
     return this;
   }
 
+  /**
+   * Send file response by reading and encoding file content
+   * @param filePath - Absolute path to the file to send
+   */
   file(filePath: string): void {
     if (!fs.existsSync(filePath)) {
       this.end(resourceNotFound(filePath));
@@ -159,6 +214,12 @@ export class Response {
     }
   }
 
+  /**
+   * Render EJS template and send HTML response
+   * @param view - Template name (without .ejs extension)
+   * @param data - Template data variables
+   * @param options - EJS render options
+   */
   render(view: string, data: Data = {}, options: Options = {}): void {
     const templateFolder = this.options?.templateFolder;
 
@@ -202,6 +263,10 @@ export class Response {
     }
   }
 
+  /**
+   * Send HTTP redirect response
+   * @param url - URL to redirect to
+   */
   redirect(url: string) {
     const encodedUrl = url.replace(/([^\u0000-\u00FF])/g, (match) => encodeURI(match));
 
@@ -215,6 +280,13 @@ export class Response {
     });
   }
 
+  /**
+   * Set a cookie in the response headers
+   * @param name - Cookie name
+   * @param value - Cookie value (string, number, or object)
+   * @param options - Cookie options (path, expires, signed, etc.)
+   * @returns This Response instance for method chaining
+   */
   cookie(
     name: string,
     value: string | number | Record<string, any>,
@@ -222,7 +294,6 @@ export class Response {
   ) {
     const serializedValue = this.serializeCookieValue(value);
     const opts = this.normalizeCookieOptions(options);
-
     const existingCookies = this.getExistingCookies();
 
     const finalValue = opts.signed
@@ -231,11 +302,15 @@ export class Response {
 
     const cookieString = cookie.serialize(name, finalValue, opts);
     existingCookies.push(cookieString);
-
     this.headers['Set-Cookie'] = existingCookies;
     return this;
   }
 
+  /**
+   * Serialize cookie value, converting objects to JSON with 'j:' prefix
+   * @param value - Cookie value to serialize
+   * @returns Serialized cookie value string
+   */
   private serializeCookieValue(value: string | number | Record<string, any>): string {
     if (typeof value === 'object') {
       return 'j:' + JSON.stringify(value);
@@ -243,6 +318,12 @@ export class Response {
     return String(value);
   }
 
+  /**
+   * Normalize and validate cookie options
+   * @param options - Raw cookie options
+   * @returns Normalized CookieOptions with validated maxAge and default path
+   * @throws Error if maxAge is provided but not a valid number
+   */
   private normalizeCookieOptions(options?: CookieOptions): CookieOptions {
     const opts = { ...options };
 
@@ -259,6 +340,10 @@ export class Response {
     return opts;
   }
 
+  /**
+   * Get existing cookies from Set-Cookie header as an array
+   * @returns Array of existing cookie strings
+   */
   private getExistingCookies(): string[] {
     const existingCookies = this.headers['Set-Cookie'];
     if (!existingCookies) {
@@ -267,6 +352,12 @@ export class Response {
     return Array.isArray(existingCookies) ? existingCookies : [existingCookies];
   }
 
+  /**
+   * Clear a cookie by setting its expiration to epoch time
+   * @param name - Name of the cookie to clear
+   * @param options - Additional cookie options
+   * @returns This Response instance for method chaining
+   */
   clearCookie(name: string, options?: Record<string, any>) {
     const opts: CookieOptions = {
       ...options,
@@ -276,15 +367,27 @@ export class Response {
     return this.cookie(name, '', opts);
   }
 
-  error(e: Error | Record<string, any>) {
+  /**
+   * Send error response with appropriate status code and content type
+   * @param e - Error object, plain object, or error message string
+   */
+  error(e: Error | Record<string, any> | string) {
     const statusCode = this.statusCode || 500;
     const response = this.createErrorResponse(e, statusCode);
     this.end(response);
   }
 
-  private createErrorResponse(e: Error | Record<string, any>, statusCode: number): SimpleResponse {
-    const isGetRequest = this.req.httpMethod === 'GET';
-    const isJson = isJsonRequest(this.req.headers);
+  /**
+   * Create error response based on request type (JSON vs plain text)
+   * @param e - Error data
+   * @param statusCode - HTTP status code
+   * @returns SimpleResponse with error details
+   */
+  private createErrorResponse(e: Error | Record<string, any> | string, statusCode: number): SimpleResponse {
+    const httpMethod = this.req.httpMethod || 'GET';
+    const headers = this.req.headers || {};
+    const isGetRequest = httpMethod === 'GET';
+    const isJson = isJsonRequest(headers);
 
     if (isGetRequest && !isJson) {
       return this.createPlainTextError(e);
@@ -293,7 +396,12 @@ export class Response {
     return this.createJsonError(e, statusCode);
   }
 
-  private createPlainTextError(e: Error | Record<string, any>): SimpleResponse {
+  /**
+   * Create plain text error response
+   * @param e - Error data
+   * @returns SimpleResponse with plain text error body
+   */
+  private createPlainTextError(e: Error | Record<string, any> | string): SimpleResponse {
     let body: string;
     if (e instanceof Error) {
       body = e.stack ?? e.message;
@@ -312,7 +420,13 @@ export class Response {
     };
   }
 
-  private createJsonError(e: Error | Record<string, any>, statusCode: number): SimpleResponse {
+  /**
+   * Create JSON formatted error response
+   * @param e - Error data
+   * @param statusCode - HTTP status code
+   * @returns SimpleResponse with JSON error body containing statusCode and message/stack
+   */
+  private createJsonError(e: Error | Record<string, any> | string, statusCode: number): SimpleResponse {
     let body: Record<string, any>;
 
     if (e instanceof Error) {
@@ -337,22 +451,31 @@ export class Response {
   }
 
   /**
-   * Send unauthorized response
+   * Send 401 Unauthorized response
+   * @param e - Error object, plain object, or message string
    */
-  notAuthorized(e: Error | Record<string, any>) {
+  notAuthorized(e: Error | Record<string, any> | string) {
+    const isErrorObject = e instanceof Error;
+    const responseData = isErrorObject
+      ? { statusCode: 401, message: e.message }
+      : typeof e === 'object'
+        ? { statusCode: 401, data: e }
+        : { statusCode: 401, message: String(e) };
+
     this.end({
       statusCode: this.statusCode || 401,
       headers: {
-        'content-type': isJsonRequest(this.req.headers)
+        'content-type': isJsonRequest(this.req.headers || {})
           ? 'application/json'
           : 'text/html'
       },
-      body: e
+      body: responseData
     });
   }
 
   /**
    * Send plain text response
+   * @param str - Plain text string to send
    */
   text(str: string) {
     this.end({

@@ -7,30 +7,39 @@ const dir = __dirname;
 const defaultConfig = require('./template/tcf.config.json');
 const CWD = process.cwd();
 
+/**
+ * Load configuration file from specified path
+ * @param {string} filePath - Path to config file or directory
+ * @returns {object} Configuration object
+ */
 const getConfigFile = (filePath = '') => {
   if (filePath) {
     const stat = fs.lstatSync(filePath);
+    
     if (stat.isDirectory()) {
       const files = fs.readdirSync(filePath);
+      
       for (const file of files) {
         const fileAbsolutePath = path.join(filePath, file);
+        
         if (
-          fs.lstatSync(file).isFile() &&
+          fs.lstatSync(fileAbsolutePath).isFile() &&
           (file.endsWith('tcf.config.json') || file.endsWith('tcf.config.js'))
         ) {
           return require(fileAbsolutePath);
         }
       }
+      
       throw new Error('no config file found');
     } else {
-      return require(filePath);
+      return require(path.resolve(filePath));
     }
-  } else {
-    return defaultConfig;
   }
+  
+  return defaultConfig;
 };
 
-const installInquirer = [
+const installInquiry = [
   {
     type: 'list',
     message: 'Do you want to install all dependencies?',
@@ -56,7 +65,7 @@ const functionInquiry = [
     type: 'input',
     message: 'Please input the function name',
     name: 'functionName',
-    default: (val) => {
+    default: () => {
       return 'my-app';
     }
   },
@@ -97,21 +106,32 @@ const functionInquiry = [
   }
 ];
 
+/**
+ * Initialize a new TCF project
+ */
 const actionInit = () => {
   const configFilePath = path.join(dir, 'template/tcf.config.json');
   fs.copyFileSync(configFilePath, path.join(CWD, 'tcf.config.json'));
   fs.mkdirSync(path.join(CWD, 'functions'));
 };
 
+/**
+ * Start local development server
+ * @param {string} configPath - Path to configuration file
+ * @param {object} cmd - Command options
+ */
 const actionDev = (configPath, cmd) => {
   const execFilePath = path.join(dir, `server.ts`);
+  
   if (configPath && !path.isAbsolute(configPath)) {
     configPath = path.join(CWD, configPath);
   }
+  
   const nodeFiles = [
     path.join(dir, '../node_modules/ts-node/dist/bin.js'),
     path.join(dir, '../../ts-node/dist/bin.js')
   ];
+  
   let nodeFilePath = '';
   for (const file of nodeFiles) {
     if (fs.existsSync(file)) {
@@ -119,27 +139,38 @@ const actionDev = (configPath, cmd) => {
       break;
     }
   }
+  
   const subProcess = exec(
     `node "${nodeFilePath}" "${execFilePath}" "${CWD}" "${configPath || CWD}"`,
     {
       maxBuffer: 1024 * 2000
     },
     function(err, stdout, stderr) {
-      console.log(err, stdout, stderr);
+      if (err) {
+        console.error(err);
+      }
     }
   );
+  
   subProcess.stdout.on('data', (data) => {
-    console.log(data);
+    console.log(data.toString());
   });
 };
 
+/**
+ * Create a new layer
+ * @param {object} result - Layer creation parameters
+ */
 const createLayerProcess = (result) => {
   const config = getConfigFile(result.configFile);
   const layerRootDir = path.join(result.cwd || CWD, config.layerPath || '');
+  
   if (!fs.existsSync(layerRootDir)) {
     fs.mkdirSync(layerRootDir);
   }
+  
   const layerDir = path.join(result.cwd || CWD, config.layerPath || '', result.layerName);
+  
   if (fs.existsSync(layerDir)) {
     throw new Error('Layer exists, please check again.');
   } else {
@@ -147,16 +178,21 @@ const createLayerProcess = (result) => {
   }
 };
 
+/**
+ * Create a new cloud function
+ * @param {object} result - Function creation parameters
+ */
 const createFunctionProcess = (result) => {
   const config = getConfigFile(result.configFile);
   const functionDir = path.join(result.cwd || CWD, config.appPath || '', result.functionName);
+  
   if (fs.existsSync(functionDir)) {
     throw new Error('Function exists, please check again.');
   } else {
     fs.mkdirSync(functionDir);
   }
-  const packageName =
-    result.language === 'typescript' ? 'package-ts.json' : 'package-js.json';
+  
+  const packageName = result.language === 'typescript' ? 'package-ts.json' : 'package-js.json';
   const packageFilePath = path.join(dir, `template/${packageName}`);
   const tsConfigFilePath = path.join(dir, 'template/tsconfig.json');
   const indexFilePath = path.join(
@@ -165,45 +201,46 @@ const createFunctionProcess = (result) => {
   );
   const routerFilePath = path.join(
     dir,
-    `template/routers/demo.router.${
-      result.language === 'typescript' ? 'ts' : 'js'
-    }`
+    `template/routers/demo.router.${result.language === 'typescript' ? 'ts' : 'js'}`
   );
+  
   const packageContent = require(packageFilePath);
   packageContent.name = result.functionName;
+  
   if (result.isWebservice) {
     packageContent.webservice.path = result.urlPath;
   } else {
     delete packageContent.webservice;
   }
+  
   fs.writeFileSync(
     path.join(functionDir, 'package.json'),
-    JSON.stringify(packageContent, '  ', 2)
+    JSON.stringify(packageContent, null, 2)
   );
+  
   fs.copyFileSync(
     indexFilePath,
-    path.join(
-      functionDir,
-      `index.${result.language === 'typescript' ? 'ts' : 'js'}`
-    )
+    path.join(functionDir, `index.${result.language === 'typescript' ? 'ts' : 'js'}`)
   );
+  
   fs.copyFileSync(
     tsConfigFilePath,
-    path.join(
-      functionDir,
-      'tsconfig.json'
-    )
+    path.join(functionDir, 'tsconfig.json')
   );
-  fs.mkdirSync(functionDir + '/routers');
+  
+  fs.mkdirSync(path.join(functionDir, 'routers'));
+  
   fs.copyFileSync(
     routerFilePath,
-    path.join(
-      functionDir,
-      `/routers/demo.router.${result.language === 'typescript' ? 'ts' : 'js'}`
-    )
+    path.join(functionDir, `routers/demo.router.${result.language === 'typescript' ? 'ts' : 'js'}`)
   );
 };
 
+/**
+ * Create a component (function or layer)
+ * @param {string} component - Component type
+ * @param {object} cmd - Command options
+ */
 const actionCreate = async (component, cmd) => {
   if (component === 'function') {
     const { default: inquirer } = await import('inquirer');
@@ -220,76 +257,82 @@ const actionCreate = async (component, cmd) => {
   }
 };
 
+/**
+ * Create a new project
+ * @param {string} projectName - Project name
+ * @param {object} cmd - Command options
+ */
 const actionNew = async (projectName, cmd) => {
   const projectPath = path.join(CWD, projectName);
+  
   if (fs.existsSync(projectPath)) {
     throw new Error('Project exists, please check again.');
   } else {
     fs.mkdirSync(projectPath);
   }
-  fs.mkdirSync(projectPath + '/functions');
+  
+  fs.mkdirSync(path.join(projectPath, 'functions'));
+  
   const packageFilePath = path.join(dir, `template/package.json`);
   const versionPath = path.join(dir, '../package.json');
   const version = require(versionPath).version;
   const packageContent = require(packageFilePath);
+  
   packageContent.name = projectName;
   packageContent.dependencies['tcf-router'] = version;
+  
   fs.writeFileSync(
     path.join(projectPath, 'package.json'),
-    JSON.stringify(packageContent, '  ', 2)
+    JSON.stringify(packageContent, null, 2)
   );
+  
   fs.copyFileSync(
     path.join(dir, 'template/tcf.config.json'),
     path.join(projectPath, 'tcf.config.json')
   );
+  
   fs.copyFileSync(
     path.join(dir, 'template/tcf.ci.js'),
     path.join(projectPath, 'tcf.ci.js')
   );
+  
   createFunctionProcess({
     functionName: 'tcf-demo-function',
     language: 'typescript',
     isWebservice: 'yes',
     urlPath: '/',
-    cwd: projectPath + '/functions'
+    cwd: path.join(projectPath, 'functions')
   });
+  
   console.log(`project ${projectName} has been created!`);
+  
   const { default: inquirer } = await import('inquirer');
-  const result = await inquirer.prompt(installInquirer);
+  const result = await inquirer.prompt(installInquiry);
+  
   if (result.installNow === 'yes') {
-    const subProcess = exec(
-      `cd ${projectName} && npm install`,
-      {
-        maxBuffer: 1024 * 2000
-      },
-      function(err, stdout, stderr) {
-        console.log(err, stdout, stderr);
-      }
-    );
+    const subProcess = exec(`cd ${projectName} && npm install`, {
+      maxBuffer: 1024 * 2000
+    });
+    
     subProcess.stdout.on('data', (data) => {
-      console.log(data);
+      console.log(data.toString());
     });
   }
 };
 
+/**
+ * Deploy cloud functions
+ * @param {string} configPath - Path to configuration file
+ * @param {object} cmd - Command options
+ */
 const actionDeploy = async (configPath, cmd) => {
   const execFilePath = path.join(dir, `deploy.js`);
+  
   if (configPath && !path.isAbsolute(configPath)) {
     configPath = path.join(CWD, configPath);
   }
-  const nodeFiles = [
-    path.join(dir, '../node_modules/ts-node/dist/bin.js'),
-    path.join(dir, '../../ts-node/dist/bin.js')
-  ];
-  let nodeFilePath = '';
-  for (const file of nodeFiles) {
-    if (fs.existsSync(file)) {
-      nodeFilePath = file;
-      break;
-    }
-  }
-
-  const subProcess2 = exec(
+  
+  const subProcess = exec(
     `node "${execFilePath}" "${CWD}" "${configPath || CWD}"`,
     {
       maxBuffer: 1024 * 2000
@@ -298,13 +341,12 @@ const actionDeploy = async (configPath, cmd) => {
       if (err || (stderr && stderr.includes('Error'))) {
         console.error(err, stderr);
         throw new Error(err);
-      } else {
-        // console.log(stdout);
       }
     }
   );
-  subProcess2.stdout.on('data', (data) => {
-    console.log(data);
+  
+  subProcess.stdout.on('data', (data) => {
+    console.log(data.toString());
   });
 };
 

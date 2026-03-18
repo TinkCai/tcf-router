@@ -2,108 +2,131 @@ import { TcfApiHandler, TcfApiRequest, TcfApiResponse } from '../index';
 import * as cookie from 'cookie';
 import * as signature from 'cookie-signature';
 
-const SECRET = process.env.ENCRYPTSECRET || 'scf-stack';
+const DEFAULT_SECRET = process.env.ENCRYPTSECRET || 'scf-stack';
 
+/**
+ * Cookie parser middleware
+ * Parses Cookie header and populates req.cookies and req.signedCookies
+ * Supports JSON-encoded cookies (j: prefix) and signed cookies (s: prefix)
+ */
 const cookieParser: TcfApiHandler = async (
   req: TcfApiRequest,
   res: TcfApiResponse,
   next: () => void
 ) => {
   if (req.cookies) {
-    return next();
+    next();
+    return;
   }
-  const cookies = req.headers.cookie;
+
+  const cookieHeader = req.headers.cookie;
+  
   req.cookies = Object.create(null);
   req.signedCookies = Object.create(null);
 
-  // no cookies
-  if (!cookies) {
-    return next();
+  if (!cookieHeader) {
+    next();
+    return;
   }
-  req.cookies = cookie.parse(cookies, {});
 
-  // parse signed cookies
-  req.signedCookies = signedCookies(req.cookies, SECRET);
-  req.signedCookies = JSONCookies(req.signedCookies);
+  req.cookies = cookie.parse(cookieHeader);
 
-  // parse JSON cookies
-  req.cookies = JSONCookies(req.cookies);
+  const parsedSignedCookies = parseSignedCookies(req.cookies, DEFAULT_SECRET);
+  req.signedCookies = parseJsonCookies(parsedSignedCookies);
 
-  // merge
-  req.cookies = Object.assign(req.cookies, req.signedCookies);
+  req.cookies = parseJsonCookies(req.cookies);
+
+  Object.assign(req.cookies, req.signedCookies);
+  
   next();
 };
 
-function JSONCookie(str: string): any | undefined {
-  if (typeof str !== 'string' || str.substr(0, 2) !== 'j:') {
+/**
+ * Parse JSON-encoded cookie value
+ * @param value - Cookie value to parse
+ * @returns Parsed object or undefined if not a JSON cookie
+ */
+function parseJsonCookie(value: string): any {
+  if (typeof value !== 'string' || !value.startsWith('j:')) {
     return undefined;
   }
 
   try {
-    return JSON.parse(str.slice(2));
-  } catch (err) {
+    return JSON.parse(value.slice(2));
+  } catch {
     return undefined;
   }
 }
 
-function JSONCookies(obj: Record<string, any>): Record<string, any> {
-  const cookies: string[] = Object.keys(obj);
-  let key: string;
-  let val: any;
-
-  for (let i = 0; i < cookies.length; i++) {
-    key = cookies[i];
-    val = JSONCookie(obj[key]);
-
-    if (val) {
-      obj[key] = val;
+/**
+ * Parse all JSON-encoded cookies in an object
+ * @param cookies - Object containing cookie key-value pairs
+ * @returns New object with parsed JSON cookies
+ */
+function parseJsonCookies(cookies: Record<string, any>): Record<string, any> {
+  const result = { ...cookies };
+  
+  for (const [key, value] of Object.entries(result)) {
+    const parsed = parseJsonCookie(value);
+    if (parsed !== undefined) {
+      result[key] = parsed;
     }
   }
 
-  return obj;
+  return result;
 }
 
-function signedCookie(str: string, secret: string | string[]): string | boolean | undefined {
-  if (typeof str !== 'string') {
+/**
+ * Verify and parse signed cookie
+ * @param value - Signed cookie value
+ * @param secret - Secret key(s) for verification
+ * @returns Unsigned value, false if invalid, or original value if not signed
+ */
+function parseSignedCookie(
+  value: string,
+  secret: string | string[]
+): string | boolean | undefined {
+  if (typeof value !== 'string') {
     return undefined;
   }
 
-  if (str.substr(0, 2) !== 's:') {
-    return str;
+  if (!value.startsWith('s:')) {
+    return value;
   }
 
-  const secrets: string[] = secret ? (Array.isArray(secret) ? secret : [secret]) : [secret];
+  const secrets = Array.isArray(secret) ? secret : [secret];
 
-  for (let i = 0; i < secrets.length; i++) {
-    const val: string | false = signature.unsign(str.slice(2), secrets[i]);
-
-    if (val !== false) {
-      return val;
+  for (const s of secrets) {
+    const unsigned = signature.unsign(value.slice(2), s);
+    if (unsigned !== false) {
+      return unsigned;
     }
   }
 
   return false;
 }
 
-function signedCookies(obj: Record<string, any>, secret: string | string[]): Record<string, any> {
-  const cookies: string[] = Object.keys(obj);
-  let dec: string | boolean | undefined;
-  let key: string;
-  const ret: Record<string, any> = Object.create(null);
-  let val: any;
+/**
+ * Parse all signed cookies in an object
+ * @param cookies - Object containing cookie key-value pairs
+ * @param secret - Secret key(s) for verification
+ * @returns Object containing only signed cookies with verified values
+ */
+function parseSignedCookies(
+  cookies: Record<string, any>,
+  secret: string | string[]
+): Record<string, any> {
+  const signedCookies = Object.create(null);
 
-  for (let i = 0; i < cookies.length; i++) {
-    key = cookies[i];
-    val = obj[key];
-    dec = signedCookie(val, secret);
-
-    if (val !== dec) {
-      ret[key] = dec;
-      delete obj[key];
+  for (const [key, value] of Object.entries(cookies)) {
+    const unsigned = parseSignedCookie(value, secret);
+    if (value !== unsigned) {
+      signedCookies[key] = unsigned;
+      delete cookies[key];
     }
   }
 
-  return ret;
+  return signedCookies;
 }
 
 export default cookieParser;

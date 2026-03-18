@@ -1,108 +1,105 @@
 import { TcfApiHandler, TcfApiRequest, TcfApiResponse } from '../index';
 import { URLSearchParams } from 'url';
 
-const CONTENT_TYPE = {
-  MULTIPART_FORM_DATA: 'multipart/form-data',
-  APPLICATION_JSON: 'application/json',
-  TEXT_PLAIN: 'text/plain',
-  APPLICATION_XML: 'application/xml',
-  TEXT_XML: 'text/xml',
-  APPLICATION_FORM_ENCODED: 'application/x-www-form-urlencoded'
-};
+enum ContentType {
+  MULTIPART_FORM_DATA = 'multipart/form-data',
+  APPLICATION_JSON = 'application/json',
+  TEXT_PLAIN = 'text/plain',
+  APPLICATION_XML = 'application/xml',
+  TEXT_XML = 'text/xml',
+  APPLICATION_FORM_ENCODED = 'application/x-www-form-urlencoded'
+}
 
-const getContentType = (headers: { [name: string]: string }) => {
-  const contentTypes = headers['content-type'];
-  let types = [] as string[];
-  if (!contentTypes) {
-    return CONTENT_TYPE.APPLICATION_JSON;
-  } else {
-    if (typeof contentTypes === 'string') {
-      types = contentTypes.split(';');
-    } else if (
-      typeof contentTypes === 'object' &&
-      Array instanceof contentTypes
-    ) {
-      types = contentTypes;
+/**
+ * Extract content type from headers
+ * @param headers - HTTP request headers
+ * @returns Detected content type
+ */
+const getContentType = (headers: { [name: string]: string }): string => {
+  const contentTypeHeader = headers['content-type'];
+  
+  if (!contentTypeHeader) {
+    return ContentType.APPLICATION_JSON;
+  }
+
+  const types = typeof contentTypeHeader === 'string'
+    ? contentTypeHeader.split(';')
+    : Array.isArray(contentTypeHeader)
+      ? contentTypeHeader
+      : [];
+
+  for (const type of types) {
+    const normalizedType = type.toLowerCase().trim();
+    
+    switch (normalizedType) {
+      case ContentType.MULTIPART_FORM_DATA:
+        return ContentType.MULTIPART_FORM_DATA;
+      case ContentType.APPLICATION_JSON:
+        return ContentType.APPLICATION_JSON;
+      case ContentType.TEXT_PLAIN:
+        return ContentType.TEXT_PLAIN;
+      case ContentType.APPLICATION_XML:
+        return ContentType.APPLICATION_XML;
+      case ContentType.TEXT_XML:
+        return ContentType.TEXT_XML;
+      case ContentType.APPLICATION_FORM_ENCODED:
+        return ContentType.APPLICATION_FORM_ENCODED;
     }
   }
-  let contentType = CONTENT_TYPE.APPLICATION_JSON;
-  for (let type of types) {
-    switch (type.toLowerCase()) {
-      case CONTENT_TYPE.MULTIPART_FORM_DATA: {
-        contentType = CONTENT_TYPE.MULTIPART_FORM_DATA;
-        break;
-      }
-      case CONTENT_TYPE.APPLICATION_JSON: {
-        contentType = CONTENT_TYPE.APPLICATION_JSON;
-        break;
-      }
-      case CONTENT_TYPE.TEXT_PLAIN: {
-        contentType = CONTENT_TYPE.TEXT_PLAIN;
-        break;
-      }
-      case CONTENT_TYPE.APPLICATION_XML: {
-        contentType = CONTENT_TYPE.APPLICATION_XML;
-        break;
-      }
-      case CONTENT_TYPE.TEXT_XML: {
-        contentType = CONTENT_TYPE.TEXT_XML;
-        break;
-      }
-      case CONTENT_TYPE.APPLICATION_FORM_ENCODED: {
-        contentType = CONTENT_TYPE.APPLICATION_FORM_ENCODED;
-        break;
-      }
-    }
-  }
-  return contentType;
+
+  return ContentType.APPLICATION_JSON;
 };
 
-const parseQuery = (queryString: string) => {
+/**
+ * Parse query string into key-value object
+ * @param queryString - URL encoded query string
+ * @returns Parsed key-value object
+ */
+const parseQueryString = (queryString: string): Record<string, string> => {
   const usp = new URLSearchParams(queryString);
-  const entries = usp.entries();
-  const body = {} as Record<string, any>;
-  let done = false;
-  let value: string[] | undefined;
-  while (!done) {
-    const next = entries.next();
-    done = next.done as boolean;
-    if (!done) {
-      value = next.value || [];
-      body[value[0]] = value[1];
-    }
+  const body: Record<string, string> = {};
+
+  for (const [key, value] of usp.entries()) {
+    body[key] = value;
   }
+
   return body;
 };
 
-const parse = (async (
+/**
+ * Body parser middleware
+ * Parses request body based on Content-Type header
+ * Supports JSON, form-urlencoded, and other formats
+ */
+const bodyParser: TcfApiHandler = async (
   req: TcfApiRequest,
   res: TcfApiResponse,
   next: () => void
 ) => {
-  if (typeof res === 'function') {
-    next = res;
-    res = {} as TcfApiResponse;
-  }
   if (!req.body) {
     next();
     return;
   }
-  const contentType = getContentType(req.headers);
-  let body;
-  if (contentType === CONTENT_TYPE.APPLICATION_JSON) {
-    try {
-      body = JSON.parse(req.body as string);
-    } catch (e) {
-      throw new Error(`Not a valid json in the body: ${req.body}`);
-    }
-  } else if (contentType === CONTENT_TYPE.APPLICATION_FORM_ENCODED) {
-    body = parseQuery(req.body as string);
-  } else {
-    body = req.body;
-  }
-  req._body = req.body as string;
-  req.body = body;
-  next();
-}) as TcfApiHandler;
 
-export default parse;
+  const contentType = getContentType(req.headers);
+  let parsedBody: any;
+
+  try {
+    if (contentType === ContentType.APPLICATION_JSON) {
+      parsedBody = JSON.parse(req.body as string);
+    } else if (contentType === ContentType.APPLICATION_FORM_ENCODED) {
+      parsedBody = parseQueryString(req.body as string);
+    } else {
+      parsedBody = req.body;
+    }
+  } catch (error) {
+    throw new Error(`Failed to parse body: ${req.body}`);
+  }
+
+  req._body = req.body as string;
+  req.body = parsedBody;
+  
+  next();
+};
+
+export default bodyParser;

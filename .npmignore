@@ -1,1 +1,34 @@
+# Source code (will be compiled to dist/)
+src/
+types/
+
+# Development files
+test/
+coverage/
+*.log
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Demo and examples
 demo/
+
+# Build artifacts
+dist/*.map
+*.tsbuildinfo
+
+# Git files
+.git/
+.gitignore
+
+# CI/CD
+.github/
+
+# Config files that shouldn't be published
+.prettierrc.json
+tsconfig.json
