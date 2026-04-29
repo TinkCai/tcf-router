@@ -213,7 +213,7 @@ const findFunctionApp = (
  */
 (async () => {
   try {
-    const config = await getConfigFile(args[0]);
+    const config = await getConfigFile(args[1]);
     const simulator = new Simulator(config);
     const apps = await getApps(config);
 

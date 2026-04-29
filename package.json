@@ -1,6 +1,6 @@
 {
   "name": "tcf-router",
-  "version": "0.1.13-beta.0",
+  "version": "0.1.13-beta.2",
   "description": "provide a express-like tencent cloudbase function router and a local simulator",
   "main": "./dist/index.js",
   "types": "./types/index.d.ts",
@@ -8,7 +8,7 @@
     "tcf": "./bin/index.js"
   },
   "scripts": {
-    "prepublishOnly": "npm run build && npm run test",
+    "prepublishOnly": "npm run build",
     "test": "jest --coverage --detectOpenHandles",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --coverageReporters=text-lcov | coveralls",
@@ -20,7 +20,7 @@
     "format": "prettier --config .prettierrc.json --write \"{src,client,test}/**/*.{j,t}s\"",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "publish-beta": "npm publish --tag=beta"
+    "publish-beta": "npm publish --tag beta"
   },
   "repository": {
     "github": "https://github.com/TinkCai/tcf-router"

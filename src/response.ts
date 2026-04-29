@@ -122,29 +122,23 @@ export class Response {
       return;
     }
     this._end = true;
-    const onFinishEventResults = this.eventsOnFinish.map((event) =>
-      event(this)
-    );
-
-    Promise.all(onFinishEventResults).then(() => {
-      const formattedResponse = this.formatResponse(value);
-
-      if (formattedResponse.headers) {
-        for (const key in formattedResponse.headers) {
-          if (Array.isArray(formattedResponse.headers[key])) {
-            if (!formattedResponse.multiValueHeaders) {
-              formattedResponse.multiValueHeaders = {};
-            }
-            formattedResponse.multiValueHeaders[key] =
-              formattedResponse.headers[key];
-            delete formattedResponse.headers[key];
+    const formattedResponse = this.formatResponse(value);
+    if (formattedResponse.headers) {
+      for (const key in formattedResponse.headers) {
+        if (Array.isArray(formattedResponse.headers[key])) {
+          if (!formattedResponse.multiValueHeaders) {
+            formattedResponse.multiValueHeaders = {};
           }
+          formattedResponse.multiValueHeaders[key] =
+            formattedResponse.headers[key];
+          delete formattedResponse.headers[key];
         }
       }
-
-      this.result = formattedResponse;
-      this.finalEvent(this);
-    });
+    }
+    this.result = formattedResponse;
+    // Execute onFinish callbacks synchronously (like Express)
+    this.eventsOnFinish.forEach((event) => event(this));
+    this.finalEvent(this);
   }
 
   /**

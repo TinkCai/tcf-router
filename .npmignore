@@ -1,6 +1,5 @@
 # Source code (will be compiled to dist/)
 src/
-types/
 
 # Development files
 test/

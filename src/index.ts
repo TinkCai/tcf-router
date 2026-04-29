@@ -8,7 +8,7 @@ export type TcfApiHandler = (
   res: TcfApiResponse,
   next: () => void,
   options?: Record<string, any>
-) => Promise<void>;
+) => Promise<void> | void;
 
 export type AddRoutes = (sr: Router) => void;
 
@@ -265,7 +265,6 @@ export class Router {
             },
             this.options
           )
-          .catch(reject);
       }
     });
   }

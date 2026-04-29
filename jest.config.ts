@@ -9,7 +9,12 @@ const config: Config = {
     '**/?(*.)+(spec|test).ts'
   ],
   transform: {
-    '^.+\\.ts$': 'ts-jest'
+    '^.+\\.ts$': ['ts-jest', {
+      tsconfig: {
+        sourceMap: true,
+        inlineSourceMap: true
+      }
+    }]
   },
   collectCoverageFrom: [
     'src/**/*.ts',

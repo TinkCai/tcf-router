@@ -121,7 +121,7 @@ const actionInit = () => {
  * @param {object} cmd - Command options
  */
 const actionDev = (configPath, cmd) => {
-  const execFilePath = path.join(dir, `server.ts`);
+  const execFilePath = path.join(dir, `../dist/server.js`);
 
   if (configPath && !path.isAbsolute(configPath)) {
     configPath = path.join(CWD, configPath);

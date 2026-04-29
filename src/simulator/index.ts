@@ -209,60 +209,73 @@ export class Simulator {
     response: SimpleResponse | string | number | Record<string, any>
   ): void {
     if (typeof response === 'string' || typeof response === 'number') {
-      const body = response.toString();
-      res
-        .status(200)
-        .set({
-          'Content-Length': Buffer.byteLength(body),
-          'Content-Type': 'text/plain'
-        })
-        .end(body);
+      this.sendTextResponse(res, response.toString());
       return;
     }
 
     if (typeof response === 'object') {
       if ('statusCode' in response) {
-        const typedResponse = response as SimpleResponse;
-
-        if (typedResponse.multiValueHeaders) {
-          typedResponse.headers = typedResponse.headers || {};
-
-          for (const [key, values] of Object.entries(
-            typedResponse.multiValueHeaders
-          )) {
-            if (Array.isArray(values)) {
-              typedResponse.headers[key] =
-                values.length > 1 ? values : values[0] || '';
-            }
-          }
-        }
-
-        let body: any;
-        if (
-          typedResponse.isBase64Encoded &&
-          typeof typedResponse.body === 'string'
-        ) {
-          body = Buffer.from(typedResponse.body, 'base64');
-        } else if (typeof typedResponse.body === 'object') {
-          body = typedResponse.body;
-        } else {
-          body = typedResponse.body;
-        }
-
-        res
-          .status(typedResponse.statusCode)
-          .set(typedResponse.headers || {})
-          .end(body);
+        this.sendStructuredResponse(res, response as SimpleResponse);
       } else {
-        const body = JSON.stringify(response);
-        res
-          .status(200)
-          .set({
-            'Content-Length': Buffer.byteLength(body),
-            'Content-Type': 'application/json'
-          })
-          .end(body);
+        this.sendJsonResponse(res, response);
       }
     }
+  }
+
+  private sendTextResponse(res: ExpressResponse, body: string): void {
+    res
+      .status(200)
+      .set({
+        'Content-Length': Buffer.byteLength(body),
+        'Content-Type': 'text/plain'
+      })
+      .end(body);
+  }
+
+  private sendJsonResponse(res: ExpressResponse, data: Record<string, any>): void {
+    const body = JSON.stringify(data);
+    res
+      .status(200)
+      .set({
+        'Content-Length': Buffer.byteLength(body),
+        'Content-Type': 'application/json'
+      })
+      .end(body);
+  }
+
+  private sendStructuredResponse(res: ExpressResponse, response: SimpleResponse): void {
+    const typedResponse = { ...response };
+    
+    if (typedResponse.multiValueHeaders) {
+      typedResponse.headers = typedResponse.headers || {};
+
+      for (const [key, values] of Object.entries(typedResponse.multiValueHeaders)) {
+        if (Array.isArray(values)) {
+          typedResponse.headers[key] =
+            values.length > 1 ? values : values[0] || '';
+        }
+      }
+    }
+
+    const body = this.formatResponseBody(typedResponse);
+    
+    res
+      .status(typedResponse.statusCode)
+      .set(typedResponse.headers || {})
+      .end(body);
+  }
+
+  private formatResponseBody(response: SimpleResponse): string | Buffer {
+    const { body, isBase64Encoded, headers } = response;
+    
+    if (isBase64Encoded && typeof body === 'string') {
+      return Buffer.from(body, 'base64');
+    }
+
+    if (typeof body === 'object' && body !== null) {
+      return JSON.stringify(body);
+    }
+
+    return body ?? '';
   }
 }
