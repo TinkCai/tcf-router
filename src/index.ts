@@ -91,7 +91,9 @@ export interface TcfApiResponse extends Response {
   multiValueHeaders?: Record<string, any>;
 }
 
-export interface TcfContext extends Record<string, any> {}
+export interface TcfContext {
+  [name: string]: any;
+}
 
 export interface TcfFunctionApp {
   path: string;
@@ -229,7 +231,7 @@ export class Router {
     handler: Handler,
     flags: ContinueFlag
   ): Promise<{ continue: boolean; result?: any }> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const onFinally = () => {
         if (flags.next) {
           console.error('the next() was executed, so there is no result');
@@ -249,22 +251,21 @@ export class Router {
       }
 
       if (handler.func) {
-        handler
-          .func(
-            this._request,
-            this._response,
-            () => {
-              if (flags.result) {
-                console.error('the response has been responded');
-              } else {
-                flags.next = true;
-                resolve({
-                  continue: true
-                });
-              }
-            },
-            this.options
-          )
+        handler.func(
+          this._request,
+          this._response,
+          () => {
+            if (flags.result) {
+              console.error('the response has been responded');
+            } else {
+              flags.next = true;
+              resolve({
+                continue: true
+              });
+            }
+          },
+          this.options
+        );
       }
     });
   }

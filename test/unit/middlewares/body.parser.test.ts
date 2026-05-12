@@ -18,9 +18,13 @@ describe('bodyParser', () => {
 
   it('should call next() if req.body is not set', async () => {
     mockRequest.body = undefined;
-    
-    await bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next);
-    
+
+    await bodyParser(
+      mockRequest as TcfApiRequest,
+      mockResponse as TcfApiResponse,
+      next
+    );
+
     expect(next).toHaveBeenCalled();
   });
 
@@ -28,9 +32,13 @@ describe('bodyParser', () => {
     const jsonData = { name: 'John', age: 30 };
     mockRequest.body = JSON.stringify(jsonData);
     mockRequest.headers = { 'content-type': 'application/json' };
-    
-    await bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next);
-    
+
+    await bodyParser(
+      mockRequest as TcfApiRequest,
+      mockResponse as TcfApiResponse,
+      next
+    );
+
     expect(mockRequest.body).toEqual(jsonData);
     expect(mockRequest._body).toBe(JSON.stringify(jsonData));
     expect(next).toHaveBeenCalled();
@@ -38,10 +46,16 @@ describe('bodyParser', () => {
 
   it('should parse application/x-www-form-urlencoded body', async () => {
     mockRequest.body = 'name=John&age=30';
-    mockRequest.headers = { 'content-type': 'application/x-www-form-urlencoded' };
-    
-    await bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next);
-    
+    mockRequest.headers = {
+      'content-type': 'application/x-www-form-urlencoded'
+    };
+
+    await bodyParser(
+      mockRequest as TcfApiRequest,
+      mockResponse as TcfApiResponse,
+      next
+    );
+
     expect(mockRequest.body).toEqual({ name: 'John', age: '30' });
     expect(next).toHaveBeenCalled();
   });
@@ -49,9 +63,13 @@ describe('bodyParser', () => {
   it('should keep original body for unsupported content types', async () => {
     mockRequest.body = 'plain text';
     mockRequest.headers = { 'content-type': 'text/plain' };
-    
-    await bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next);
-    
+
+    await bodyParser(
+      mockRequest as TcfApiRequest,
+      mockResponse as TcfApiResponse,
+      next
+    );
+
     expect(mockRequest.body).toBe('plain text');
     expect(mockRequest._body).toBe('plain text');
     expect(next).toHaveBeenCalled();
@@ -60,17 +78,26 @@ describe('bodyParser', () => {
   it('should throw error for invalid JSON', async () => {
     mockRequest.body = '{ invalid json }';
     mockRequest.headers = { 'content-type': 'application/json' };
-    
-    await expect(bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next))
-      .rejects.toThrow('Failed to parse body');
+
+    await expect(
+      bodyParser(
+        mockRequest as TcfApiRequest,
+        mockResponse as TcfApiResponse,
+        next
+      )
+    ).rejects.toThrow('Failed to parse body');
   });
 
   it('should handle multipart/form-data', async () => {
     mockRequest.body = 'form data';
     mockRequest.headers = { 'content-type': 'multipart/form-data' };
-    
-    await bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next);
-    
+
+    await bodyParser(
+      mockRequest as TcfApiRequest,
+      mockResponse as TcfApiResponse,
+      next
+    );
+
     expect(mockRequest.body).toBe('form data');
     expect(next).toHaveBeenCalled();
   });
@@ -78,9 +105,13 @@ describe('bodyParser', () => {
   it('should handle application/xml', async () => {
     mockRequest.body = '<xml></xml>';
     mockRequest.headers = { 'content-type': 'application/xml' };
-    
-    await bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next);
-    
+
+    await bodyParser(
+      mockRequest as TcfApiRequest,
+      mockResponse as TcfApiResponse,
+      next
+    );
+
     expect(mockRequest.body).toBe('<xml></xml>');
     expect(next).toHaveBeenCalled();
   });
@@ -88,9 +119,13 @@ describe('bodyParser', () => {
   it('should handle text/xml', async () => {
     mockRequest.body = '<xml></xml>';
     mockRequest.headers = { 'content-type': 'text/xml' };
-    
-    await bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next);
-    
+
+    await bodyParser(
+      mockRequest as TcfApiRequest,
+      mockResponse as TcfApiResponse,
+      next
+    );
+
     expect(mockRequest.body).toBe('<xml></xml>');
     expect(next).toHaveBeenCalled();
   });
@@ -99,9 +134,13 @@ describe('bodyParser', () => {
     const jsonData = { test: 'data' };
     mockRequest.body = JSON.stringify(jsonData);
     mockRequest.headers = { 'content-type': 'APPLICATION/JSON' };
-    
-    await bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next);
-    
+
+    await bodyParser(
+      mockRequest as TcfApiRequest,
+      mockResponse as TcfApiResponse,
+      next
+    );
+
     expect(mockRequest.body).toEqual(jsonData);
     expect(next).toHaveBeenCalled();
   });
@@ -110,9 +149,13 @@ describe('bodyParser', () => {
     const jsonData = { test: 'data' };
     mockRequest.body = JSON.stringify(jsonData);
     mockRequest.headers = { 'content-type': 'application/json; charset=utf-8' };
-    
-    await bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next);
-    
+
+    await bodyParser(
+      mockRequest as TcfApiRequest,
+      mockResponse as TcfApiResponse,
+      next
+    );
+
     expect(mockRequest.body).toEqual(jsonData);
     expect(next).toHaveBeenCalled();
   });
@@ -121,9 +164,13 @@ describe('bodyParser', () => {
     const jsonData = { test: 'data' };
     mockRequest.body = JSON.stringify(jsonData);
     mockRequest.headers = {};
-    
-    await bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next);
-    
+
+    await bodyParser(
+      mockRequest as TcfApiRequest,
+      mockResponse as TcfApiResponse,
+      next
+    );
+
     expect(mockRequest.body).toEqual(jsonData);
     expect(next).toHaveBeenCalled();
   });
@@ -132,9 +179,13 @@ describe('bodyParser', () => {
     const jsonData = { test: 'data' };
     mockRequest.body = JSON.stringify(jsonData);
     mockRequest.headers = {};
-    
-    await bodyParser(mockRequest as TcfApiRequest, mockResponse as TcfApiResponse, next);
-    
+
+    await bodyParser(
+      mockRequest as TcfApiRequest,
+      mockResponse as TcfApiResponse,
+      next
+    );
+
     expect(mockRequest.body).toEqual(jsonData);
     expect(next).toHaveBeenCalled();
   });

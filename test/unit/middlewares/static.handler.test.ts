@@ -1,6 +1,13 @@
 import staticHandler from '../../../src/middlewares/static.handler';
 import { TcfApiRequest, TcfApiResponse } from '../../../src/index';
-import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals';
+import {
+  describe,
+  expect,
+  it,
+  jest,
+  beforeEach,
+  afterEach
+} from '@jest/globals';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -17,11 +24,14 @@ describe('staticHandler', () => {
     }
     fs.writeFileSync(path.join(staticBasePath, 'test.txt'), 'Test content');
     fs.mkdirSync(path.join(staticBasePath, 'subdir'), { recursive: true });
-    fs.writeFileSync(path.join(staticBasePath, 'subdir', 'nested.txt'), 'Nested content');
+    fs.writeFileSync(
+      path.join(staticBasePath, 'subdir', 'nested.txt'),
+      'Nested content'
+    );
 
     mockRequest = {
       httpMethod: 'GET',
-      path: '/test.txt',
+      path: 'test.txt',
       headers: {},
       isBase64Encoded: false,
       queryStringParameters: {},
@@ -47,19 +57,21 @@ describe('staticHandler', () => {
 
   it('should serve static file', async () => {
     const handler = staticHandler(staticBasePath);
-    
+
     await handler(mockRequest, mockResponse as TcfApiResponse, next);
-    
-    expect(mockResponse.file).toHaveBeenCalledWith(path.join(staticBasePath, 'test.txt'));
+
+    expect(mockResponse.file).toHaveBeenCalledWith(
+      path.join(staticBasePath, 'test.txt')
+    );
     expect(next).not.toHaveBeenCalled();
   });
 
   it('should call next() for non-GET/HEAD requests', async () => {
     mockRequest.httpMethod = 'POST';
     const handler = staticHandler(staticBasePath);
-    
+
     await handler(mockRequest, mockResponse as TcfApiResponse, next);
-    
+
     expect(next).toHaveBeenCalled();
     expect(mockResponse.file).not.toHaveBeenCalled();
   });
@@ -67,9 +79,9 @@ describe('staticHandler', () => {
   it('should call next() if file does not exist', async () => {
     mockRequest.path = '/nonexistent.txt';
     const handler = staticHandler(staticBasePath);
-    
+
     await handler(mockRequest, mockResponse as TcfApiResponse, next);
-    
+
     expect(next).toHaveBeenCalled();
     expect(mockResponse.file).not.toHaveBeenCalled();
   });
@@ -77,9 +89,9 @@ describe('staticHandler', () => {
   it('should prevent directory traversal attacks', async () => {
     mockRequest.path = '/../etc/passwd';
     const handler = staticHandler(staticBasePath);
-    
+
     await handler(mockRequest, mockResponse as TcfApiResponse, next);
-    
+
     expect(mockResponse.end).toHaveBeenCalled();
     expect(next).not.toHaveBeenCalled();
   });
@@ -87,9 +99,9 @@ describe('staticHandler', () => {
   it('should call next() for directories', async () => {
     mockRequest.path = '/subdir';
     const handler = staticHandler(staticBasePath);
-    
+
     await handler(mockRequest, mockResponse as TcfApiResponse, next);
-    
+
     expect(next).toHaveBeenCalled();
     expect(mockResponse.file).not.toHaveBeenCalled();
   });
@@ -97,20 +109,24 @@ describe('staticHandler', () => {
   it('should handle HEAD requests', async () => {
     mockRequest.httpMethod = 'HEAD';
     const handler = staticHandler(staticBasePath);
-    
+
     await handler(mockRequest, mockResponse as TcfApiResponse, next);
-    
-    expect(mockResponse.file).toHaveBeenCalledWith(path.join(staticBasePath, 'test.txt'));
+
+    expect(mockResponse.file).toHaveBeenCalledWith(
+      path.join(staticBasePath, 'test.txt')
+    );
     expect(next).not.toHaveBeenCalled();
   });
 
   it('should handle nested files', async () => {
     mockRequest.path = '/subdir/nested.txt';
     const handler = staticHandler(staticBasePath);
-    
+
     await handler(mockRequest, mockResponse as TcfApiResponse, next);
-    
-    expect(mockResponse.file).toHaveBeenCalledWith(path.join(staticBasePath, 'subdir', 'nested.txt'));
+
+    expect(mockResponse.file).toHaveBeenCalledWith(
+      path.join(staticBasePath, 'subdir', 'nested.txt')
+    );
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -118,11 +134,13 @@ describe('staticHandler', () => {
     const fileName = 'test file.txt';
     fs.writeFileSync(path.join(staticBasePath, fileName), 'Space content');
     mockRequest.path = '/' + encodeURIComponent(fileName);
-    
+
     const handler = staticHandler(staticBasePath);
     await handler(mockRequest, mockResponse as TcfApiResponse, next);
-    
-    expect(mockResponse.file).toHaveBeenCalledWith(path.join(staticBasePath, fileName));
+
+    expect(mockResponse.file).toHaveBeenCalledWith(
+      path.join(staticBasePath, fileName)
+    );
     expect(next).not.toHaveBeenCalled();
   });
 });

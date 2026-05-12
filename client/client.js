@@ -118,9 +118,8 @@ const actionInit = () => {
 /**
  * Start local development server
  * @param {string} configPath - Path to configuration file
- * @param {object} cmd - Command options
  */
-const actionDev = (configPath, cmd) => {
+const actionDev = (configPath) => {
   const execFilePath = path.join(dir, `../dist/server.js`);
 
   if (configPath && !path.isAbsolute(configPath)) {
@@ -145,7 +144,7 @@ const actionDev = (configPath, cmd) => {
     {
       maxBuffer: 1024 * 2000
     },
-    function (err, stdout, stderr) {
+    function (err) {
       if (err) {
         console.error(err);
       }
@@ -251,9 +250,8 @@ const createFunctionProcess = (result) => {
 /**
  * Create a component (function or layer)
  * @param {string} component - Component type
- * @param {object} cmd - Command options
  */
-const actionCreate = async (component, cmd) => {
+const actionCreate = async (component) => {
   if (component === 'function') {
     const { default: inquirer } = await import('inquirer');
     const result = await inquirer.prompt(functionInquiry);
@@ -272,9 +270,8 @@ const actionCreate = async (component, cmd) => {
 /**
  * Create a new project
  * @param {string} projectName - Project name
- * @param {object} cmd - Command options
  */
-const actionNew = async (projectName, cmd) => {
+const actionNew = async (projectName) => {
   const projectPath = path.join(CWD, projectName);
 
   if (fs.existsSync(projectPath)) {
@@ -335,9 +332,8 @@ const actionNew = async (projectName, cmd) => {
 /**
  * Deploy cloud functions
  * @param {string} configPath - Path to configuration file
- * @param {object} cmd - Command options
  */
-const actionDeploy = async (configPath, cmd) => {
+const actionDeploy = async (configPath) => {
   const execFilePath = path.join(dir, `deploy.js`);
 
   if (configPath && !path.isAbsolute(configPath)) {

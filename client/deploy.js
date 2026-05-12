@@ -190,7 +190,7 @@ const getEnvVariables = (set, list = []) => {
  */
 const executeProcess = async (cmdPath, cmd) => {
   return new Promise((resolve, reject) => {
-    const subProcess = exec(
+    exec(
       `cd "${cmdPath}" && ${cmd}`,
       {
         maxBuffer: 1024 * 2000

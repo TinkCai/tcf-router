@@ -1,7 +1,15 @@
 import { Response, resourceNotFound } from '../../src/response';
 import { TcfApiRequest } from '../../src/index';
 import { createMockRequest } from '../setup';
-import { describe, expect, it, beforeEach, jest, beforeAll, afterAll } from '@jest/globals';
+import {
+  describe,
+  expect,
+  it,
+  beforeEach,
+  jest,
+  beforeAll,
+  afterAll
+} from '@jest/globals';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -88,10 +96,13 @@ describe('Response', () => {
     });
 
     it('should convert array headers to multiValueHeaders', () => {
-      (response as any).headers['Set-Cookie'] = ['cookie1=value1', 'cookie2=value2'];
-      
+      (response as any).headers['Set-Cookie'] = [
+        'cookie1=value1',
+        'cookie2=value2'
+      ];
+
       response.end({ body: 'test' });
-      
+
       expect(response.result?.multiValueHeaders?.['Set-Cookie']).toEqual([
         'cookie1=value1',
         'cookie2=value2'
@@ -106,27 +117,31 @@ describe('Response', () => {
       });
 
       response.end('test');
-      
+
       expect(finalEventCalled).toBe(true);
     });
 
     it('should set default content-type to application/json for non-SimpleResponse', () => {
       response.end({ message: 'hello' });
-      expect(response.result?.headers?.['content-type']).toBe('application/json');
+      expect(response.result?.headers?.['content-type']).toBe(
+        'application/json'
+      );
     });
   });
 
   describe('formatResponse', () => {
     it('should merge headers when formatting SimpleResponse', () => {
       (response as any).headers['X-Custom-Header'] = 'custom-value';
-      
+
       response.end({
         statusCode: 200,
         headers: { 'X-Another': 'value' },
         body: 'test'
       });
 
-      expect(response.result?.headers?.['X-Custom-Header']).toBe('custom-value');
+      expect(response.result?.headers?.['X-Custom-Header']).toBe(
+        'custom-value'
+      );
       expect(response.result?.headers?.['X-Another']).toBe('value');
     });
 
@@ -144,7 +159,10 @@ describe('Response', () => {
 
   describe('isSimpleResponse', () => {
     it('should return true for objects with statusCode', () => {
-      const result = (response as any).isSimpleResponse({ statusCode: 200, body: 'test' });
+      const result = (response as any).isSimpleResponse({
+        statusCode: 200,
+        body: 'test'
+      });
       expect(result).toBe(true);
     });
 
@@ -177,7 +195,7 @@ describe('Response', () => {
 
     it('should handle arrays as JSON', () => {
       const testArray = [1, 2, 3, { name: 'test' }];
-      
+
       response.finally(() => {
         expect(response.result?.statusCode).toBe(200);
         expect(response.result?.body).toEqual(testArray);
@@ -231,11 +249,11 @@ describe('Response', () => {
 
     it('should send file content as base64', () => {
       response.file(testFilePath);
-      
+
       expect(response.result?.statusCode).toBe(200);
       expect(response.result?.isBase64Encoded).toBe(true);
       expect(response.result?.headers?.['content-type']).toBeDefined();
-      
+
       const decodedContent = Buffer.from(
         response.result?.body as string,
         'base64'
@@ -245,7 +263,7 @@ describe('Response', () => {
 
     it('should handle non-existent files', () => {
       response.file(nonExistentFile);
-      
+
       expect(response.result?.statusCode).toBe(404);
       expect(response.result?.body).toContain('Resource Not Found');
     });
@@ -255,9 +273,11 @@ describe('Response', () => {
       fs.writeFileSync(jsonFilePath, '{"test": "data"}', 'utf-8');
 
       response.file(jsonFilePath);
-      
-      expect(response.result?.headers?.['content-type']).toContain('application/json');
-      
+
+      expect(response.result?.headers?.['content-type']).toContain(
+        'application/json'
+      );
+
       fs.unlinkSync(jsonFilePath);
     });
   });
@@ -285,35 +305,37 @@ describe('Response', () => {
     it('should render EJS template', () => {
       const respWithOptions = new Response(mockRequest, { templateFolder });
       respWithOptions.render('test', { name: 'World' });
-      
+
       expect(respWithOptions.result?.statusCode).toBe(200);
-      expect(respWithOptions.result?.headers?.['content-type']).toBe('text/html');
+      expect(respWithOptions.result?.headers?.['content-type']).toBe(
+        'text/html'
+      );
       expect(respWithOptions.result?.body).toContain('<h1>Hello World</h1>');
     });
 
     it('should handle missing templateFolder', () => {
       const respWithoutOptions = new Response(mockRequest);
       respWithoutOptions.render('test', { name: 'World' });
-      
+
       expect(respWithoutOptions.result?.statusCode).toBe(404);
     });
 
     it('should handle non-existent template file', () => {
       const respWithOptions = new Response(mockRequest, { templateFolder });
       respWithOptions.render('non-existent', { name: 'World' });
-      
+
       expect(respWithOptions.result?.statusCode).toBe(404);
     });
 
     it('should merge defaultTemplateData with data', () => {
-      const respWithOptions = new Response(mockRequest, { 
+      const respWithOptions = new Response(mockRequest, {
         templateFolder,
         defaultTemplateData: { site: 'MySite' }
       });
-      
+
       fs.writeFileSync(templatePath, '<%= site %> - <%= name %>', 'utf-8');
       respWithOptions.render('test', { name: 'Page' });
-      
+
       expect(respWithOptions.result?.body).toContain('MySite - Page');
     });
   });
@@ -339,7 +361,7 @@ describe('Response', () => {
     it('should use custom status code if set', () => {
       response.status(301);
       response.redirect('https://example.com');
-      
+
       expect(response.result?.statusCode).toBe(301);
     });
 
@@ -354,8 +376,11 @@ describe('Response', () => {
       response.cookie('sessionId', 'abc123');
 
       response.onFinish(() => {
-        expect(response.result?.multiValueHeaders?.['Set-Cookie']).toBeDefined();
-        const cookieHeader = response.result?.multiValueHeaders?.['Set-Cookie'][0];
+        expect(
+          response.result?.multiValueHeaders?.['Set-Cookie']
+        ).toBeDefined();
+        const cookieHeader =
+          response.result?.multiValueHeaders?.['Set-Cookie'][0];
         expect(cookieHeader).toContain('sessionId=abc123');
       });
 
@@ -370,7 +395,8 @@ describe('Response', () => {
       });
 
       response.onFinish(() => {
-        const cookieHeader = response.result?.multiValueHeaders?.['Set-Cookie'][0];
+        const cookieHeader =
+          response.result?.multiValueHeaders?.['Set-Cookie'][0];
         expect(cookieHeader).toContain('HttpOnly');
       });
 
@@ -381,7 +407,8 @@ describe('Response', () => {
       response.cookie('userData', { id: 1, name: 'John' });
 
       response.onFinish(() => {
-        const cookieHeader = response.result?.multiValueHeaders?.['Set-Cookie'][0];
+        const cookieHeader =
+          response.result?.multiValueHeaders?.['Set-Cookie'][0];
         expect(cookieHeader).toContain(encodeURIComponent('j:'));
       });
 
@@ -390,9 +417,10 @@ describe('Response', () => {
 
     it('should sign cookies when signed option is true', () => {
       response.cookie('signedCookie', 'value', { signed: true });
-      
+
       response.onFinish(() => {
-        const cookieHeader = response.result?.multiValueHeaders?.['Set-Cookie'][0];
+        const cookieHeader =
+          response.result?.multiValueHeaders?.['Set-Cookie'][0];
         expect(cookieHeader).toContain('signedCookie=');
       });
 
@@ -424,7 +452,8 @@ describe('Response', () => {
     it('should clear cookie by setting expiry to past', () => {
       response.clearCookie('sessionId');
       response.text('end');
-      const cookieHeader = response.result?.multiValueHeaders?.['Set-Cookie'][0];
+      const cookieHeader =
+        response.result?.multiValueHeaders?.['Set-Cookie'][0];
       expect(cookieHeader).toContain('sessionId=');
       expect(cookieHeader).toContain('Expires=Thu, 01 Jan 1970');
     });
@@ -432,7 +461,8 @@ describe('Response', () => {
     it('should accept additional options', () => {
       response.clearCookie('sessionId', { domain: '.example.com' });
       response.text('end');
-      const cookieHeader = response.result?.multiValueHeaders?.['Set-Cookie'][0];
+      const cookieHeader =
+        response.result?.multiValueHeaders?.['Set-Cookie'][0];
       expect(cookieHeader).toContain('Domain=.example.com');
     });
   });
@@ -473,15 +503,17 @@ describe('Response', () => {
     it('should use custom status code if set', () => {
       response.status(503);
       response.error('Service Unavailable');
-      
+
       expect(response.result?.statusCode).toBe(503);
     });
 
     it('should send JSON error for JSON requests', () => {
       mockRequest.headers.accept = 'application/json';
       response.error(new Error('API Error'));
-      
-      expect(response.result?.headers?.['content-type']).toBe('application/json');
+
+      expect(response.result?.headers?.['content-type']).toBe(
+        'application/json'
+      );
       expect((response.result?.body as Error).message).toBe('API Error');
     });
 
@@ -489,7 +521,7 @@ describe('Response', () => {
       mockRequest.httpMethod = 'GET';
       mockRequest.headers.accept = 'text/html';
       response.error(new Error('Page Error'));
-      
+
       expect(response.result?.headers?.['content-type']).toBe('text/plain');
     });
   });
@@ -505,7 +537,7 @@ describe('Response', () => {
 
     it('should handle Error objects', () => {
       response.notAuthorized(new Error('Not authenticated'));
-      
+
       expect(response.result?.statusCode).toBe(401);
       const body = response.result?.body;
       expect((body as Error).message).toBe('Not authenticated');
@@ -513,16 +545,19 @@ describe('Response', () => {
 
     it('should handle object errors', () => {
       response.notAuthorized({ code: 'AUTH_ERROR', reason: 'Token expired' });
-      
+
       expect(response.result?.statusCode).toBe(401);
       const body = response.result?.body;
-      expect((body as Record<string, any>).data).toEqual({ code: 'AUTH_ERROR', reason: 'Token expired' });
+      expect((body as Record<string, any>).data).toEqual({
+        code: 'AUTH_ERROR',
+        reason: 'Token expired'
+      });
     });
 
     it('should use custom status code if set', () => {
       response.status(403);
       response.notAuthorized('Forbidden');
-      
+
       expect(response.result?.statusCode).toBe(403);
     });
   });
@@ -604,8 +639,10 @@ describe('Response', () => {
       it('should send JSON error when Accept header includes application/json', () => {
         mockRequest.headers.accept = 'application/json';
         response.error(new Error('API Error'));
-        
-        expect(response.result?.headers?.['content-type']).toBe('application/json');
+
+        expect(response.result?.headers?.['content-type']).toBe(
+          'application/json'
+        );
         const body = response.result?.body;
         expect(body).toHaveProperty('message', 'API Error');
       });
@@ -614,7 +651,7 @@ describe('Response', () => {
         mockRequest.httpMethod = 'GET';
         mockRequest.headers.accept = 'text/html';
         response.error(new Error('Page Error'));
-        
+
         expect(response.result?.headers?.['content-type']).toBe('text/plain');
         expect(response.result?.body).toContain('Page Error');
       });
@@ -623,23 +660,27 @@ describe('Response', () => {
         mockRequest.httpMethod = 'POST';
         mockRequest.headers.accept = 'text/html';
         response.error(new Error('Post Error'));
-        
-        expect(response.result?.headers?.['content-type']).toBe('application/json');
+
+        expect(response.result?.headers?.['content-type']).toBe(
+          'application/json'
+        );
       });
 
       it('should handle missing accept header', () => {
         mockRequest.headers.accept = '';
         mockRequest.httpMethod = 'GET';
         response.error(new Error('No Accept Header'));
-        
+
         expect(response.result?.headers?.['content-type']).toBe('text/plain');
       });
 
       it('should detect JSON in multiple accept values', () => {
         mockRequest.headers.accept = 'text/html, application/json, */*';
         response.error(new Error('Multiple Accept Headers'));
-        
-        expect(response.result?.headers?.['content-type']).toBe('application/json');
+
+        expect(response.result?.headers?.['content-type']).toBe(
+          'application/json'
+        );
       });
     });
   });

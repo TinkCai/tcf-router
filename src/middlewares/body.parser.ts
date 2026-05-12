@@ -94,7 +94,8 @@ const bodyParser: TcfApiHandler = async (
       parsedBody = req.body;
     }
   } catch (error) {
-    throw new Error(`Failed to parse body: ${req.body}`);
+    // ts-ignore
+    throw new Error(`Failed to parse body: ${req.body}, ${error}`);
   }
 
   req._body = req.body as string;

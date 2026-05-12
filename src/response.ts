@@ -209,7 +209,7 @@ export class Response {
       };
 
       this.end(response);
-    } catch (error) {
+    } catch {
       this.end(resourceNotFound(filePath));
     }
   }
@@ -270,6 +270,7 @@ export class Response {
    * @param url - URL to redirect to
    */
   redirect(url: string) {
+    // ts-ignore
     const encodedUrl = url.replace(/([^\u0000-\u00FF])/g, (match) =>
       encodeURI(match)
     );

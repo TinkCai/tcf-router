@@ -18,12 +18,14 @@ const handler = (staticBasePath: string): TcfApiHandler => {
 
     const requestPath = decodeURIComponent(req.path);
 
-    if (requestPath.includes('..') || path.isAbsolute(requestPath)) {
+    const safePath = requestPath.replace(/^\/+/, '');
+
+    if (safePath.includes('..')) {
       res.end(resourceNotFound(req.path));
       return;
     }
 
-    const filePath = path.join(staticBasePath, requestPath);
+    const filePath = path.join(staticBasePath, safePath);
 
     if (!fs.existsSync(filePath)) {
       next();
@@ -38,7 +40,7 @@ const handler = (staticBasePath: string): TcfApiHandler => {
       } else {
         next();
       }
-    } catch (error) {
+    } catch {
       next();
     }
   }) as TcfApiHandler;

@@ -76,7 +76,7 @@ export class Simulator {
   ) => Promise<SimpleResponse>;
 
   setEnv(env: Record<string, string>) {
-    for (let key in env) {
+    for (const key in env) {
       process.env[key] = env[key];
     }
   }
@@ -141,14 +141,14 @@ export class Simulator {
 
     if (req.headers) {
       const protocol = this.envConfig.devServer?.https ? 'https' : 'http';
-      req.headers['x-forwarded-proto'] = protocol;
-      req.headers['x-client-proto'] = protocol;
-      req.headers['x-client-proto-ver'] = `HTTP/${req.httpVersion}`;
-      req.headers['x-real-ip'] = req.connection.remoteAddress;
-      req.headers['x-forwarded-for'] = req.connection.remoteAddress;
+      request.headers['x-forwarded-proto'] = protocol;
+      request.headers['x-client-proto'] = protocol;
+      request.headers['x-client-proto-ver'] = `HTTP/${req.httpVersion}`;
+      request.headers['x-real-ip'] = req.connection.remoteAddress;
+      request.headers['x-forwarded-for'] = req.connection.remoteAddress;
     }
 
-    req.headers['isBase64Encoded'] = false;
+    request.isBase64Encoded = false;
 
     return request;
   }
@@ -170,13 +170,16 @@ export class Simulator {
     app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
     app.use(bodyParser.json({ limit: '50mb' }));
 
-    const self = this;
-
-    // @ts-ignore
+    // @ts-expect-error not reloaded func
     app.use((req: ExpressRequest, res: ExpressResponse) => {
       const handleRequest = async () => {
         try {
-          const response = await (self.entrance as Function)(
+          const handler = this.entrance as (
+            request: TcfApiRequest,
+            context: TcfContext
+          ) => Promise<SimpleResponse>;
+
+          const response = await handler(
             this.getDecoratedRequest(req, req.body),
             {} as TcfContext
           );
@@ -232,7 +235,10 @@ export class Simulator {
       .end(body);
   }
 
-  private sendJsonResponse(res: ExpressResponse, data: Record<string, any>): void {
+  private sendJsonResponse(
+    res: ExpressResponse,
+    data: Record<string, any>
+  ): void {
     const body = JSON.stringify(data);
     res
       .status(200)
@@ -243,13 +249,18 @@ export class Simulator {
       .end(body);
   }
 
-  private sendStructuredResponse(res: ExpressResponse, response: SimpleResponse): void {
+  private sendStructuredResponse(
+    res: ExpressResponse,
+    response: SimpleResponse
+  ): void {
     const typedResponse = { ...response };
-    
+
     if (typedResponse.multiValueHeaders) {
       typedResponse.headers = typedResponse.headers || {};
 
-      for (const [key, values] of Object.entries(typedResponse.multiValueHeaders)) {
+      for (const [key, values] of Object.entries(
+        typedResponse.multiValueHeaders
+      )) {
         if (Array.isArray(values)) {
           typedResponse.headers[key] =
             values.length > 1 ? values : values[0] || '';
@@ -258,7 +269,7 @@ export class Simulator {
     }
 
     const body = this.formatResponseBody(typedResponse);
-    
+
     res
       .status(typedResponse.statusCode)
       .set(typedResponse.headers || {})
@@ -266,8 +277,8 @@ export class Simulator {
   }
 
   private formatResponseBody(response: SimpleResponse): string | Buffer {
-    const { body, isBase64Encoded, headers } = response;
-    
+    const { body, isBase64Encoded } = response;
+
     if (isBase64Encoded && typeof body === 'string') {
       return Buffer.from(body, 'base64');
     }
